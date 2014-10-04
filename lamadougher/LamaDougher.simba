@@ -24,7 +24,7 @@ DEBUG = true; // Set to false to hide script thinking
 {************************* STOP *********************}
 
 SCRIPT = 'LamaDougher';
-VERSION = '0.1';
+VERSION = '0.2.1';
 
 // Global Variables
 
@@ -340,7 +340,7 @@ begin
   if DEBUG then
     writeLn('Waiting for dough to be made ...');
 
-  antiban();
+  //antiban();
 
   waitFunc(@(packFull), 50, 20000)
 end;
@@ -373,15 +373,9 @@ begin
 
   if leftInBank < 1 then
   begin
-    result := true;
+    result := false;
     writeLn('Out of flour, terminating script...');
-    exit;
   end;
-
-  result := false;
-
-  if DEBUG then
-    writeLn('There is still flour in the bank...');
 end;
 
 function bankOpen(): boolean;
@@ -465,10 +459,10 @@ begin
     walkToWell();
     useFlour();
     waitDoughing();
-    antiban();
+    //antiban();
     walkToBank();
     doBanking();
-    antiban();
+    //antiban();
     //progressReport();
   until outOfFlour;
 
