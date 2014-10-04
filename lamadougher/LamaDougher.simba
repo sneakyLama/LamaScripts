@@ -1,0 +1,278 @@
+{=================================================================\
+|                         Edgeville Dougher                       |
+|                              by Lama                            |
+|=================================================================|
+|                                                                 |
+|   Author: Lama                                                  |
+|   Description: Turn flour into dough for a profit in Edgeville  |
+|   Contact: Private message @ SRL Forums! :)                     |
+\_________________________________________________________________}
+
+program LamaDougher;
+
+{$DEFINE SMART}
+{$i srl-6/srl.simba}
+{$I SPS/lib/SPS-RS3.Simba}
+{$i srl-6/lib/misc/srlplayerform.simba}
+
+const
+
+{********************** USER SETUP ******************}
+
+DEBUG = true;
+
+{************************* STOP *********************}
+
+SCRIPT = 'LamaDougher';
+VERSION = ' v0.1';
+
+// Global Variables
+
+var
+  potFlourDTM, antibanCount: integer;
+  loadsDone, profit, profitPerHour, profitMade: integer;
+  flourPrice, doughPrice: integer;
+  oriented: boolean;
+{*
+// Load DTMs
+procedure loadDTM();
+begin
+  potFlourDTM := DTMFromString('');
+
+  addOnTerminate('freeTheDTMS');
+end;
+
+// Free DTMs
+procedure freeTheDTMS();
+begin
+  freeDtm(potFlourDTM);
+  if DEBUG then
+    writeLn('Freed potFlourDTM');
+end;
+*}
+
+{------------------------------------------------------------)
+ Function: checkForSPSMap
+ Description: Downloads the SPS map if you don't have it.
+ Credits: Kevin
+(------------------------------------------------------------}
+
+
+procedure checkForSPSMap();
+var
+  progFile: longInt;
+  picName: string;
+
+begin
+  picName := AppPath + 'Includes/SPS/img/runescape_surface/EDGEFOUNTAIN_0.png';
+
+  try
+    if not fileExists(picName) then
+    begin
+      writeLn('NOTIFICATION: SPS map does not exist - Downloading it now!');
+      progFile := createFile(picName);
+    end else
+      exit;
+    closeFile(progFile);
+
+    progFile := rewriteFile(picName, false);
+    writeFileString(progFile, getPage('https://i.imgur.com/C8GIopr.png'));
+    writeLn('NOTIFICATION: SPS map has been download to SPS folder!');
+  finally
+    if (progFile > 0) then
+      closeFile(progFile);
+  end;
+end;
+
+{ ------------------------------------- )
+ Function: getGEPrice
+ Description: Gets prices off the wikia
+ Credits: The Mayor
+( ------------------------------------- }
+
+function getGEPrice(itemString: String): Integer;
+var
+  wikiaPage, priceString: string;
+begin
+  wikiaPage := getPage('http://runescape.wikia.com/wiki/Exchange:' + itemString);
+  priceString := between('GEPrice">', '</span>', wikiaPage);
+  result := strToIntDef(extractFromStr(priceString, numbers), -1);
+  writeLn('-- ' + itemString + ' price: ' + toStr(result));
+end;
+
+{------------------------------------------------------------------------------)
+ Function: perHour
+ Description: Converts an integer to a 'per hour' amount.
+ Credits: Coh3n
+(------------------------------------------------------------------------------}
+
+function perHour(amt, time: integer): integer;
+begin
+  if (amt = -1) then
+  begin
+    result := -1;
+    exit;
+  end;
+
+  try
+    result := round((amt * 60) / (time / 60000));
+  except
+  end;
+end;
+
+procedure getProfits();
+begin
+  flourPrice := getGEPrice('Pot_of_flour');
+  doughPrice := getGEPrice('Pastry_dough');
+end;
+
+
+{------------------------------------------------------------------------------)
+ Function: progressReport
+ Description: Paints progress on SMART w/ fancy image
+ Inspiration: Spaceblow
+(------------------------------------------------------------------------------}
+
+procedure progressReport();
+var
+  proggyImageLocation: string;
+begin
+
+  profit := (((doughPrice - flourPrice) * 14) * loadsDone);
+  profitMade := profitMade + profit;
+
+  proggyImageLocation := 'C:\Simba\Scripts\lamascripts\edgevilledougher\dougherproggy.bmp'; // Makes things a little easier
+
+  smartImage.clearArea(IntToBox(1, 338, 569, 597));
+  smartImage.drawBitmap(proggyImageLocation, point(0,338)); // Paint proggy image
+
+  smartImage.drawText(timeRunning, Point(340, 380), UpCharsEx, false, clWhite); // Draw time running
+  smartImage.drawText(toString(loadsDone) + ' loads', Point(340, 438), UpCharsEx, false, 1268443); // Draw how many loads completed
+  smartImage.drawText(toString(profit) + ' (' + (toStr((perHour(profitMade, getTimeRunning())))) + ' P/H)', Point(340, 495), UpCharsEx, false, clYellow); // Draw profit and profit per hour
+end;
+
+procedure antiban();
+begin
+
+end;
+
+{------------------------------------------------------------)
+ Procedure: orientPlayer
+ Description: Standardizes the camera angle and direction
+(------------------------------------------------------------}
+
+procedure orientPlayer();
+begin
+  if DEBUG then
+      writeLn('Orienting player ...');
+
+  minimap.clickCompass();
+  mainScreen.setAngle(MS_ANGLE_HIGH);
+  tabBackPack.open();
+
+  exitTreasure();
+  closeAdWindow();
+
+  oriented := true;
+end;
+
+procedure walkToFountain();
+begin
+
+end;
+
+procedure useFlour();
+begin
+
+end;
+
+procedure waitDoughing();
+begin
+
+end;
+
+procedure walkToBank();
+begin
+
+end;
+
+{------------------------------------------------------------)
+ Function: outOfFlour
+ Description: Checks if there is any flour left in the bank
+ Credits: The Mayor taught me this, Thanks!
+(------------------------------------------------------------}
+
+function outOfFlour(): boolean;
+var
+  x, y, leftInBank: integer;
+begin
+  findDTM(potFlourDTM, x, y, bankScreen.getBounds());
+  leftInBank := getItemAmount(bankScreen.getBankSlotBox(bankScreen.pointToSlot([x, y])));
+
+  if leftInBank < 1 then
+    result := false;
+end;
+
+procedure doBanking();
+begin
+
+end;
+
+procedure information();
+begin
+
+  writeLn('.____                            _________            .__        __          ');
+  wait(125);
+  writeLn('|    |   _____    _____ _____   /   _____/ ___________|__|______/  |_  ______');
+  wait(125);
+  writeLn('|    |   \__  \  /     \\__  \  \_____  \_/ ___\_  __ \  \____ \   __\/  ___/');
+  wait(125);
+  writeLn('|    |___ / __ \|  Y Y  \/ __ \_/        \  \___|  | \/  |  |_> >  |  \___ \ ');
+  wait(125);
+  writeLn('|_______ (____  /__|_|  (____  /_______  /\___  >__|  |__|   __/|__| /____  >');
+  wait(125);
+  writeLn('        \/    \/      \/     \/        \/     \/         |__|             \/ ');
+  wait(750);
+  writeLn('');
+  writeLn('                         Script: ' + SCRIPT + VERSION);
+  writeLn('');
+  wait(750);
+  writeLn('                         Loading, please wait....');
+  writeLn('');
+
+end;
+
+procedure mainLoop();
+begin
+  repeat
+    clearDebug();
+    walkToFountain();
+    useFlour();
+    antiban();
+    waitDoughing();
+    walkToBank();
+    doBanking();
+    antiban();
+  until outOfFlour;
+end;
+
+begin
+  clearDebug();
+  information();
+
+  smartShowConsole := false;
+  smartEnableDrawing := true;
+  disableSRLDebug := true;
+  disguise('LamaDougher');
+  wait(1250);
+  setupSRL();
+
+  checkForSPSMap();
+  //loadDTM();
+  clearDebug();
+  SPS.setup('EDGEFOUNTAIN_0', RUNESCAPE_SURFACE);
+  getProfits();
+
+  mainLoop();
+
+end.

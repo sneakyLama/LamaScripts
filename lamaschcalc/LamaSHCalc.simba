@@ -1,0 +1,172 @@
+{=============================================\
+|              Superheat Calculator           |
+|                     by Lama                 |
+|=============================================|
+|                                             |
+|  Author: Lama                               |
+|  Description: Calculate what you need for   |
+|               superheating your ores        |
+|  Contact: Private Message @ SRL Forums!     |
+|                                             |
+ \____________________________________________}
+
+program LamaSHCalc;
+
+const
+
+//////////////////////////////////////////////////////////////
+                        {---USER SETUP---}
+
+CASH = 10000000; // Your Budget
+ORECOUNT = 0; // Use this option to see costs for this amount of ore (Set to 0 if you want to use your budget)
+
+BAR = 3;         // 1 for Steel, 2 for Mithril (not profitable as of 10/3), 3 for Rune
+
+                        {---STOP  HERE---}
+//////////////////////////////////////////////////////////////
+
+RUNITE = 'Runite Ore: ';
+MITHRIL = 'Mithril Ore: ';
+STEEL = 'Iron ore: ';
+
+var
+priceOre, priceNat, priceCoal, coalTotal: integer;
+barUsing, barType, oreType: string;
+
+{ ------------------------------------- )
+ Function: getGEPrice
+ Description: Gets prices off the wikia
+ Credits: The Mayor
+( ------------------------------------- }
+
+function getGEPrice(itemString: String): Integer;
+var
+  wikiaPage, priceString: string;
+begin
+  wikiaPage := getPage('http://runescape.wikia.com/wiki/Exchange:' + itemString);
+  priceString := between('GEPrice">', '</span>', wikiaPage);
+  result := strToIntDef(extractFromStr(priceString, numbers), -1);
+  writeLn('-- ' + itemString + ' price: ' + toStr(result));
+end;
+
+{ --------------------------------------------- )
+ Procedure: setVariables
+ Description: Sets up prices, counts, totals etc
+( --------------------------------------------- }
+
+procedure setVariables();
+begin
+
+  priceNat := getGEPrice('Nature_rune');
+  priceCoal := getGEPrice('Coal');
+
+  if (BAR = 3) then
+    begin
+      priceOre := getGEPrice('Runite_ore');
+      coalTotal := 8;
+      barUsing := RUNITE;
+      barType := 'Rune_bar';
+      oreType := 'Runite_ore';
+    end;
+  if (BAR = 2) then
+    begin
+      priceOre := getGEPrice('Mithril_ore');
+      coalTotal := 4;
+      barUsing := MITHRIL;
+      barType := 'Mithril_bar';
+      oreType := 'Mithril_ore';
+    end;
+  if (BAR = 1) then
+    begin
+      priceOre := getGEPrice('Iron_ore');
+      coalTotal := 2;
+      barUsing := STEEL;
+      barType := 'Steel_bar';
+      oreType := 'Iron_ore';
+    end;
+
+end;
+
+{ ----------------------------------------------------------------------- )
+ Procedure: budgetOptimize
+ Description: Calculates how much of each you can buy for a certain budget
+( ----------------------------------------------------------------------- }
+
+procedure budgetOptimize();
+var
+pricePerCast, totalCost, sellPrice, totalProfit: integer;
+toBuy: integer;
+begin
+
+  pricePerCast := priceOre + priceNat + (priceCoal * coalTotal);
+
+  toBuy := floor(CASH / pricePerCast);
+  totalCost := (toBuy * pricePerCast);
+  sellPrice := ((getGEPrice(barType)) * toBuy);
+  totalProfit := sellPrice - totalCost;
+
+  writeLn('');
+  writeLn('Optimizing your budget...');
+  wait(750);
+  writeLn('');
+  writeLn('With: ' + toStr(CASH) + ' gp, you can buy:');
+  writeLn('-- ' + oreType + ': ' + toStr(toBuy) + ' ( ' + toStr(toBuy * priceOre) + ' )');
+  writeLn('-- ' + 'Nature Runes: ' + toStr(toBuy) + ' ( ' + toStr(toBuy * priceNat) + ' )');
+  writeLn('-- ' + 'Coal: ' + toStr(toBuy * coalTotal) + ' ( ' + toStr((toBuy * priceCoal) * coalTotal) + ' )');
+  writeLn('');
+  wait(750);
+  writeLn('ESTIMATED TOTAL COST: ' + toStr(totalCost));
+  writeLn('ESTIMATED SELL PRICE: ' + toStr(sellPrice));
+  writeLn('ESTIMATED PROFIT: ' + toStr(totalProfit));
+
+end;
+
+{ ----------------------------------------------------------------------------------- )
+ Procedure: orePricer
+ Description: Calculates costs and material buy numbers based on how much ore you want
+( ----------------------------------------------------------------------------------- }
+
+procedure orePricer();
+var
+sellPrice, totalCost, coalCount, totalProfit: integer;
+begin
+
+ coalCount := coalTotal * ORECOUNT;
+ totalCost := ((priceOre * ORECOUNT) + (priceNat * ORECOUNT) + (coalTotal * priceCoal * ORECOUNT));
+ sellPrice := (getGEPrice(barType) * ORECOUNT);
+ totalProfit := sellPrice - totalCost;
+
+ writeLn('');
+ writeLn('Calculating your costs...');
+ wait(750);
+ writeLn('');
+ writeLn('BUYING: ' + oreType + '... ');
+ writeLn('COUNT: ' + toStr(ORECOUNT) + '( ' + toStr(priceOre * ORECOUNT) + ' )');
+ writeLn('Nature runes needed: ' + toStr(ORECOUNT) + '( ' + toStr(priceNat * ORECOUNT) + ' )');
+ writeLn('Coal needed: ' + toStr(coalCount) + '( ' + toStr((priceCoal * ORECOUNT) * coalTotal) + ' )');
+ writeLn('');
+ wait(750);
+ writeLn('ESTIMATED TOTAL COST: ' + toStr(totalCost));
+ writeLn('ESTIMATED SELL PRICE: ' + toStr(sellPrice));
+ writeLn('ESTIMATED PROFIT: ' + toStr(totalProfit));
+
+end;
+
+procedure mainLoop();
+begin
+
+  if ORECOUNT < 1 then
+    budgetOptimize();
+
+  if ORECOUNT > 1 then
+    orePricer();
+
+end;
+
+begin
+  clearDebug();
+  writeLn('Getting prices...');
+  setVariables();
+  mainLoop();
+  writeLn('');
+end.
