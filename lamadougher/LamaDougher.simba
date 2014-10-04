@@ -258,8 +258,15 @@ begin
   if DEBUG then
     writeLn('Walking to well ...')
 
-  if SPS.walkPath(pathWell) then
-    minimap.waitPlayerMoving()
+  if isFlourBackpack then
+  begin
+    if SPS.walkPath(pathWell) then
+      minimap.waitPlayerMoving()
+  end;
+
+  if not isFlourBackpack then
+    wait(180000);
+
 end;
 
 function packFull(): boolean;
@@ -420,9 +427,8 @@ begin
     end;
   end;
 
-  if outOfFlour then
   // Uses preset 1, thus depositing current inventory, withdrawing next one
-    bankScreen.clickButton(BANK_BUTTON_PRESET_1);
+  bankScreen.clickButton(BANK_BUTTON_PRESET_1);
 
 end;
 
