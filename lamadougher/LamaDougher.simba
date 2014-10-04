@@ -19,37 +19,37 @@ const
 
 {********************** USER SETUP ******************}
 
-DEBUG = true;
+DEBUG = true; // Set to false to hide script thinking
 
 {************************* STOP *********************}
 
 SCRIPT = 'LamaDougher';
-VERSION = ' v0.1';
+VERSION = '0.1';
 
 // Global Variables
 
 var
-  potFlourDTM, antibanCount: integer;
+  potFlourDTM, waterDTM, antibanCount: integer;
   loadsDone, profit, profitPerHour, profitMade: integer;
   flourPrice, doughPrice: integer;
   oriented: boolean;
-{*
+  pathWell, pathBank: TPointArray;
+
 // Load DTMs
 procedure loadDTM();
 begin
-  potFlourDTM := DTMFromString('');
-
+  potFlourDTM := DTMFromString('mbQAAAHicY2VgYAhjYmBIBeJQIPZhgvD9GRkYgoE4BYiDgNgDiB/euA5UzYSCWRkwASMWDAYA0PMGCQ==');
+  waterDTM :=  DTMFromString('mbQAAAHicY2VgYFjNxMCwEYiXMEHYIBwLFI8H4hggDgXiJCDOvvGKoa+pnWFiSzvD7P5+BnNjIwZsgBELBgMAkPwM7w==');
   addOnTerminate('freeTheDTMS');
 end;
 
 // Free DTMs
 procedure freeTheDTMS();
 begin
-  freeDtm(potFlourDTM);
-  if DEBUG then
-    writeLn('Freed potFlourDTM');
+  freeDTM(potFlourDTM);
+  freeDTM(waterDTM);
 end;
-*}
+
 
 {------------------------------------------------------------)
  Function: checkForSPSMap
@@ -76,7 +76,7 @@ begin
     closeFile(progFile);
 
     progFile := rewriteFile(picName, false);
-    writeFileString(progFile, getPage('https://i.imgur.com/C8GIopr.png'));
+    writeFileString(progFile, getPage('https://i.imgur.com/m2ECJDh.png'));
     writeLn('NOTIFICATION: SPS map has been download to SPS folder!');
   finally
     if (progFile > 0) then
@@ -93,6 +93,7 @@ end;
 function getGEPrice(itemString: String): Integer;
 var
   wikiaPage, priceString: string;
+
 begin
   wikiaPage := getPage('http://runescape.wikia.com/wiki/Exchange:' + itemString);
   priceString := between('GEPrice">', '</span>', wikiaPage);
@@ -120,10 +121,20 @@ begin
   end;
 end;
 
-procedure getProfits();
+{------------------------------------------------------------------------------)
+ Procedure: getPrices
+ Description: Finds prices of the items through getGEPrice function
+(------------------------------------------------------------------------------}
+
+procedure getPrices();
 begin
+  writeLn('Getting prices ...');
   flourPrice := getGEPrice('Pot_of_flour');
   doughPrice := getGEPrice('Pastry_dough');
+  profit := doughPrice - flourPrice;
+  writeLn('');
+  writeLn('-- PROFIT: ' + toStr(profit));
+  writeLn('');
 end;
 
 
@@ -136,6 +147,7 @@ end;
 procedure progressReport();
 var
   proggyImageLocation: string;
+
 begin
 
   profit := (((doughPrice - flourPrice) * 14) * loadsDone);
@@ -151,20 +163,62 @@ begin
   smartImage.drawText(toString(profit) + ' (' + (toStr((perHour(profitMade, getTimeRunning())))) + ' P/H)', Point(340, 495), UpCharsEx, false, clYellow); // Draw profit and profit per hour
 end;
 
+procedure loadSPSPath();
+begin
+  pathWell := [Point(98, 80), Point(53, 50)];
+  pathBank := [Point(54, 49), Point(110, 108)];
+  SPS.setup('EDGEFOUNTAIN_0', RUNESCAPE_SURFACE);
+end;
+
+{----------------------------------------------------------------------------------)
+ Function: antiban
+ Description: Significantly lowers chance of ban through reproduced human qualities
+(----------------------------------------------------------------------------------}
+
 procedure antiban();
 begin
+  if DEBUG then
+    writeLn('Antibanning ...');
+
+  case(random(1000) + 1) of
+
+    1..12:
+    begin
+      mouseOffClient(OFF_CLIENT_RANDOM);
+    end;
+    13..25:
+    begin
+      sleepAndMoveMouse(1000 + random(2000));
+    end;
+    25..32:
+    begin
+      hoverSkill(SKILL_COOKING);
+    end;
+    32..45:
+    begin
+      pickUpMouse();
+    end;
+    46..60:
+    begin
+      smallRandomMouse();
+    end;
+    61..70:
+    begin
+      randomCameraAngle(MS_ANGLE_HIGH);
+    end;
+  end;
 
 end;
 
 {------------------------------------------------------------)
  Procedure: orientPlayer
- Description: Standardizes the camera angle and direction
+ Description:Makes sure everything is good to go
 (------------------------------------------------------------}
 
 procedure orientPlayer();
 begin
   if DEBUG then
-      writeLn('Orienting player ...');
+    writeLn('Orienting player ...');
 
   minimap.clickCompass();
   mainScreen.setAngle(MS_ANGLE_HIGH);
@@ -176,24 +230,132 @@ begin
   oriented := true;
 end;
 
-procedure walkToFountain();
-begin
+{------------------------------------------------------------------------------)
+ Function: isFlourBackpack
+ Description: Determines if inventory contains pots of flour.
+ Credit: The Mayor (modified by Lama)
+(------------------------------------------------------------------------------}
 
+function isFlourBackpack(): boolean;
+var
+  x, y: integer;
+
+begin
+  if not gameTabs.openTab(TAB_BACKPACK) then
+    exit;
+  result := findDTM(potFlourDTM, x, y, tabBackpack.getBounds());
+
+  if result and (DEBUG) then print('Flour found in backpack');
 end;
+
+{------------------------------------------------------------------------------)
+ Function: walkToFountain
+ Description: Walks to the fountain (from bank)
+(------------------------------------------------------------------------------}
+
+procedure walkToWell();
+begin
+  if DEBUG then
+    writeLn('Walking to well ...')
+
+  if SPS.walkPath(pathWell) then
+    minimap.waitPlayerMoving()
+end;
+
+function packFull(): boolean;
+begin
+  result := tabBackpack.isFull;
+end;
+
+{------------------------------------------------------------------------------)
+ Function: useFlour
+ Description: Uses the flour on the fountain (begins doughing)
+(------------------------------------------------------------------------------}
 
 procedure useFlour();
+var
+  x, y, i: integer;
+  TPA, mixTPA: TPointArray;
+  ATPA: T2DPointArray;
+  mix: TBox;
+
 begin
+  if DEBUG then
+    writeLn('Using flour on well...');
+
+  // Click pot of flour in inventory
+  tabBackpack.mouseSlot(2, MOUSE_MOVE);
+  fastClick(MOUSE_LEFT);
+
+  // Simple failsafe
+  if not tabBackPack.isOpen then
+  begin
+    tabBackPack.open();
+    tabBackpack.mouseSlot(2, MOUSE_MOVE);
+    fastClick(MOUSE_LEFT);
+  end;
+
+  // Find well colors
+  findColorsSpiralTolerance(x, y, TPA, 3563123, mainScreen.getBounds(), 15, colorSetting(2, 0.08, 1.57));
+  // Makes smaller box selections (multiple) around color matches of TPA
+  ATPA := TPA.toATPA(30, 30);
+  // Sorts by closest match, which should be the well
+  ATPA.sortFromMidPoint(mainscreen.playerPoint);
+
+  smartImage.debugATPA(ATPA);
+
+  // Clicks on the well
+  for i := 0 to high(ATPA) do
+  begin
+    mouse(middleTPA(ATPA[i+1]), MOUSE_MOVE);
+    if isMouseOverText(['ell'], 500) then
+    begin
+      fastClick(MOUSE_LEFT);
+      break;
+    end;
+  end;
+
+  // Starts making dough
+  if productionScreen.isOpen(5000) then
+
+  mix := intToBox(287, 328, 509, 353);
+  mixTPA := mix.createTPA;
+
+  smartImage.debugTPA(mixTPA, false);
+
+  mouseBox(mix, MOUSE_MOVE);
+  wait(randomRange(250, 400));
+  fastClick(MOUSE_LEFT);
+  smartImage.clearArea(intToBox(1, 1, 750, 550));
 
 end;
+
+{------------------------------------------------------------------------------)
+ Function: waitDoughing
+ Description: Waits for useFlour to finish up (signaled by a full inventory)
+(------------------------------------------------------------------------------}
 
 procedure waitDoughing();
 begin
+  if DEBUG then
+    writeLn('Waiting for dough to be made ...');
 
+  antiban();
+
+  waitFunc(@(packFull), 50, 20000)
 end;
+
+{------------------------------------------------------------------------------)
+ Function: walkToBank
+ Description: Walks back to the bank (from fountain)
+(------------------------------------------------------------------------------}
 
 procedure walkToBank();
 begin
-
+  if DEBUG then
+    writeLn('Walking back to bank ...');
+  if SPS.walkPath(pathBank) and tabBackpack.isFull then
+    minimap.waitPlayerMoving()
 end;
 
 {------------------------------------------------------------)
@@ -210,15 +372,67 @@ begin
   leftInBank := getItemAmount(bankScreen.getBankSlotBox(bankScreen.pointToSlot([x, y])));
 
   if leftInBank < 1 then
-    result := false;
+  begin
+    result := true;
+    writeLn('Out of flour, terminating script...');
+    exit;
+  end;
+
+  result := false;
+
+  if DEBUG then
+    writeLn('There is still flour in the bank...');
+end;
+
+function bankOpen(): boolean;
+begin
+  if bankScreen.isOpen then
+    result := true;
 end;
 
 procedure doBanking();
+var
+  x, y, i: integer;
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+
 begin
+  if DEBUG then
+    writeLn('Banking ...');
+
+  // Find banker colors
+  findColorsSpiralTolerance(x, y, TPA, 6041158, mainScreen.getBounds(), 11, colorSetting(2, 0.42, 0.69));
+
+  if length(TPA) < 1 then
+    exit;
+
+  // Makes smaller box selections (multiple) around banker colors of TPA
+  ATPA := TPA.toATPA(30, 30);
+  // Sorts banker arrays by closest to player first, using ATPA
+  ATPA.sortFromMidPoint(mainscreen.playerPoint);
+
+  // Draw boxes around each banker on smart
+  smartImage.debugATPA(ATPA);
+
+  // Clicks on closest banker
+  for i := 0 to high(ATPA) do
+  begin
+    mouse(middleTPA(ATPA[i+1]), MOUSE_MOVE);
+    if isMouseOverText(['anker'], 500) then
+    begin
+      fastClick(MOUSE_LEFT);
+      waitFunc(@bankOpen, 50, 5000);
+      break;
+    end;
+  end;
+
+  if outOfFlour then
+  // Uses preset 1, thus depositing current inventory, withdrawing next one
+    bankScreen.clickButton(BANK_BUTTON_PRESET_1);
 
 end;
 
-procedure information();
+procedure signature();
 begin
 
   writeLn('.____                            _________            .__        __          ');
@@ -234,9 +448,8 @@ begin
   writeLn('        \/    \/      \/     \/        \/     \/         |__|             \/ ');
   wait(750);
   writeLn('');
-  writeLn('                         Script: ' + SCRIPT + VERSION);
+  writeLn('                         Script: ' + SCRIPT + ' v' + VERSION);
   writeLn('');
-  wait(750);
   writeLn('                         Loading, please wait....');
   writeLn('');
 
@@ -244,34 +457,40 @@ end;
 
 procedure mainLoop();
 begin
+
+  //progressReport();
+  orientPlayer();
+
   repeat
-    clearDebug();
-    walkToFountain();
+    walkToWell();
     useFlour();
-    antiban();
     waitDoughing();
+    antiban();
     walkToBank();
     doBanking();
     antiban();
+    //progressReport();
   until outOfFlour;
+
+  //player[currentPlayer].exitToLobby();
+
 end;
 
 begin
   clearDebug();
-  information();
+  signature();
 
   smartShowConsole := false;
   smartEnableDrawing := true;
   disableSRLDebug := true;
   disguise('LamaDougher');
-  wait(1250);
   setupSRL();
+  writeLn('');
 
   checkForSPSMap();
-  //loadDTM();
-  clearDebug();
-  SPS.setup('EDGEFOUNTAIN_0', RUNESCAPE_SURFACE);
-  getProfits();
+  loadDTM();
+  loadSPSPath();
+  getPrices();
 
   mainLoop();
 
