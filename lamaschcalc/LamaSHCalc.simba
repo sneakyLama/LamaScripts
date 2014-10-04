@@ -1,14 +1,12 @@
-{=============================================\
-|              Superheat Calculator           |
-|                     by Lama                 |
-|=============================================|
-|                                             |
-|  Author: Lama                               |
-|  Description: Calculate what you need for   |
-|               superheating your ores        |
-|  Contact: Private Message @ SRL Forums!     |
-|                                             |
- \____________________________________________}
+{=================================================================\
+|                        Superheat Calculator                     |
+|                              by Lama                            |
+|=================================================================|
+|                                                                 |
+|   Author: Lama                                                  |
+|   Description: Calculate superheating expenses with ease        |
+|   Contact: Private message @ SRL Forums! :)                     |
+\_________________________________________________________________}
 
 program LamaSHCalc;
 
