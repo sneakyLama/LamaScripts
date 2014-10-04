@@ -24,7 +24,7 @@ DEBUG = true; // Set to false to hide script thinking
 {************************* STOP *********************}
 
 SCRIPT = 'LamaDougher';
-VERSION = '0.1';
+VERSION = '0.2';
 
 // Global Variables
 
