@@ -1,12 +1,39 @@
 {=================================================================\
-|                         Edgeville Dougher                       |
+|                      Lama's Edgeville Dougher                   |
 |                              by Lama                            |
 |=================================================================|
 |                                                                 |
 |   Author: Lama                                                  |
 |   Description: Turn flour into dough for a profit in Edgeville  |
 |   Contact: Private message @ SRL Forums! :)                     |
+|                                                                 |
+|                       CURRENT VERSION: 0.3                      |
+|                      LAST UPDATED:  10/4/14                     |
 \_________________________________________________________________}
+
+{============================ USER SETUP =========================)
+
+ 1. Place character in Edgeville Bank
+ 2. Setup whichever preset to have 14 pots of flour per inventory
+ 3. Hit RUN
+ 4. Fill out information, check desired boxes
+ 5. Hit 'Start Script'
+
+ 6. (Optional) Study for classes, go to work, sleep
+
+ IMPORTANT NOTE: Version 0.3 does NOT have ANTIBAN
+                 It should be pretty safe on it's
+                 own, but use with caution anyway.
+
+(=============================== STOP =============================)
+
+(:::::::::::::::::::::::::::::: TO  DO ::::::::::::::::::::::::::::)
+
+ 1. Implement Antiban (90%)
+ 2. Implement progress reports (on SMART and in the Debug) (75%)
+ 3. More failsafes (I.E. getting back to bank everytime) (0%)
+
+(::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::}
 
 program LamaDougher;
 
@@ -17,20 +44,18 @@ program LamaDougher;
 
 const
 
-{********************** USER SETUP ******************}
+{ Script Info }
+  SCRIPT = 'LamaDougher';
+  VERSION = '0.3';
 
-DEBUG = true; // Set to false to hide script thinking
-
-{************************* STOP *********************}
-
-SCRIPT = 'LamaDougher';
-VERSION = '0.2.1';
+{ Player Form }
+  P_PRESET = 2;
 
 // Global Variables
 
 var
-  potFlourDTM, waterDTM, antibanCount: integer;
-  loadsDone, profit, profitPerHour, profitMade: integer;
+  potFlourDTM, antibanCount: integer;
+  loadsDone, loadsToDo, profit, profitPerHour, profitMade: integer;
   flourPrice, doughPrice: integer;
   oriented: boolean;
   pathWell, pathBank: TPointArray;
@@ -39,24 +64,90 @@ var
 procedure loadDTM();
 begin
   potFlourDTM := DTMFromString('mbQAAAHicY2VgYAhjYmBIBeJQIPZhgvD9GRkYgoE4BYiDgNgDiB/euA5UzYSCWRkwASMWDAYA0PMGCQ==');
-  waterDTM :=  DTMFromString('mbQAAAHicY2VgYFjNxMCwEYiXMEHYIBwLFI8H4hggDgXiJCDOvvGKoa+pnWFiSzvD7P5+BnNjIwZsgBELBgMAkPwM7w==');
-  addOnTerminate('freeTheDTMS');
 end;
 
 // Free DTMs
-procedure freeTheDTMS();
+procedure freeTheDTMs();
 begin
   freeDTM(potFlourDTM);
-  freeDTM(waterDTM);
 end;
 
+procedure initPlayerForm();
+begin
+  with playerForm do
+  begin
+    name := 'Lama''s Dougher'; // the title of the SPF, usually the name of your script
+    scriptHelpThread := '';    // a link to a help thread, if set to '' will link to my setup guide
+
+    editBoxLabels := ['Loads to Do'];     // edit boxes are created for each array element
+    editBoxDefaults := ['0'];             // optional default values for each edit box; array length must equal editBoxLabel length
+
+    // optional hints for each edit box; hints are shown when the user holds the mouse over the component
+    editBoxHints := ['How many loads of dough to make?'];
+
+    checkBoxLabels := ['Save SRL log', 'Paint Status', 'Output Debug']; // same as editBoxLabels but for check boxes
+    checkBoxDefaults := ['true', 'false', 'false'];
+    checkBoxHints := ['Do you want to save SRL debug to a log file (recommended)?', 'Want to see what the script is currently doing on SMART?', 'Output what the script is currently doing into the debug box?'];
+
+    comboBoxLabels := ['Bank Preset'];
+    comboBoxDefaults := ['1'];
+    comboBoxHints := ['Use which of your bank presets?'];
+
+    // this needs to be done for every element in the comboBoxLabels array
+    setLength(comboBoxItems, length(comboBoxLabels));
+    comboBoxItems[0] := ['1', '2'];
+
+    end;
+end;
+
+procedure declarePlayers();
+var
+  i: integer;
+begin
+  players.setup(playerForm.playerNames, playerForm.playerFile); // load the SPF players from the SRL Player Manager
+  currentPlayer := 0;                // player to use first
+
+  // set player attributes based on the settings from the form
+  for i := 0 to high(players) do
+    with players[i] do
+    begin
+      // convert the integers
+      integers[0] := strToInt(playerForm.players[i].settings[0]);  // Loads to Do
+
+      // booleans
+      booleans[0] := strToBool(playerForm.players[i].settings[1]); // Save SRL Log
+      booleans[1] := strToBool(playerForm.players[i].settings[2]); // Paint Status
+      booleans[2] := strToBool(playerForm.players[i].settings[3]); // Output Debug
+
+      case playerForm.players[i].settings[4] of                    // Bank Preset
+        '1': integers[P_PRESET] := BANK_BUTTON_PRESET_1;
+        '2': integers[P_PRESET] := BANK_BUTTON_PRESET_2;
+      end;
+
+      // any other data types you've decided to use
+    end;
+end;
+
+{------------------------------------------------------------------------------)
+ Procedure: paintStatus
+ Description: Paints the current script status on SMART.
+ Credits: The Mayor
+(------------------------------------------------------------------------------}
+
+procedure paintStatus(status: string);
+begin
+  if players[currentPlayer].booleans[1] then
+  begin
+    smartImage.clearArea(intToBox(chatbox.x2-320,chatbox.y2-19, chatBox.x2, chatBox.y2));
+    smartImage.drawText('Status: ' + status, point(chatbox.x2-320,chatbox.y2-19), smallChars, false, clRed);
+  end;
+end;
 
 {------------------------------------------------------------)
  Function: checkForSPSMap
  Description: Downloads the SPS map if you don't have it.
  Credits: Kevin
 (------------------------------------------------------------}
-
 
 procedure checkForSPSMap();
 var
@@ -144,7 +235,7 @@ end;
  Inspiration: Spaceblow
 (------------------------------------------------------------------------------}
 
-procedure progressReport();
+procedure smartReport();
 var
   proggyImageLocation: string;
 
@@ -163,6 +254,16 @@ begin
   smartImage.drawText(toString(profit) + ' (' + (toStr((perHour(profitMade, getTimeRunning())))) + ' P/H)', Point(340, 495), UpCharsEx, false, clYellow); // Draw profit and profit per hour
 end;
 
+procedure debugReport();
+begin
+
+end;
+
+procedure overallReport();
+begin
+
+end;
+
 procedure loadSPSPath();
 begin
   pathWell := [Point(98, 80), Point(53, 50)];
@@ -171,40 +272,50 @@ begin
 end;
 
 {----------------------------------------------------------------------------------)
- Function: antiban
+ Function: antiban   (to be implemented)
  Description: Significantly lowers chance of ban through reproduced human qualities
 (----------------------------------------------------------------------------------}
 
 procedure antiban();
 begin
-  if DEBUG then
-    writeLn('Antibanning ...');
 
   case(random(1000) + 1) of
 
     1..12:
     begin
       mouseOffClient(OFF_CLIENT_RANDOM);
+      if playerForm.players[currentPlayer].booleans[2] then
+        writeLn('Antibanning ...');
     end;
     13..25:
     begin
       sleepAndMoveMouse(1000 + random(2000));
+      if playerForm.players[currentPlayer].booleans[2] then
+        writeLn('Antibanning ...');
     end;
     25..32:
     begin
       hoverSkill(SKILL_COOKING);
+      if playerForm.players[currentPlayer].booleans[2] then
+        writeLn('Antibanning ...');
     end;
     32..45:
     begin
       pickUpMouse();
+      if playerForm.players[currentPlayer].booleans[2] then
+        writeLn('Antibanning ...');
     end;
     46..60:
     begin
       smallRandomMouse();
+      if playerForm.players[currentPlayer].booleans[2] then
+        writeLn('Antibanning ...');
     end;
     61..70:
     begin
       randomCameraAngle(MS_ANGLE_HIGH);
+      if playerForm.players[currentPlayer].booleans[2] then
+        writeLn('Antibanning ...');
     end;
   end;
 
@@ -217,8 +328,12 @@ end;
 
 procedure orientPlayer();
 begin
-  if DEBUG then
+  if playerForm.players[currentPlayer].booleans[2] then
+  begin
     writeLn('Orienting player ...');
+  end;
+
+  paintStatus('Orienting player ...');
 
   minimap.clickCompass();
   mainScreen.setAngle(MS_ANGLE_HIGH);
@@ -245,7 +360,7 @@ begin
     exit;
   result := findDTM(potFlourDTM, x, y, tabBackpack.getBounds());
 
-  if result and (DEBUG) then print('Flour found in backpack');
+  if result and strToBool(playerForm.players[currentPlayer].settings[3]) then print('Flour found in backpack');
 end;
 
 {------------------------------------------------------------------------------)
@@ -255,17 +370,13 @@ end;
 
 procedure walkToWell();
 begin
-  if DEBUG then
-    writeLn('Walking to well ...')
+  if playerForm.players[currentPlayer].booleans[2] then
+    writeLn('Walking to well ...');
 
-  if isFlourBackpack then
-  begin
-    if SPS.walkPath(pathWell) then
-      minimap.waitPlayerMoving()
-  end;
+  paintStatus('Walking to well ...');
 
-  if not isFlourBackpack then
-    wait(180000);
+  if SPS.walkPath(pathWell) and isFlourBackpack then
+      minimap.waitPlayerMoving();
 
 end;
 
@@ -287,18 +398,20 @@ var
   mix: TBox;
 
 begin
-  if DEBUG then
-    writeLn('Using flour on well...');
+  if playerForm.players[currentPlayer].booleans[2] then
+    writeLn('Using flour on the well ...');
+
+  paintStatus('Using flour on the well ...');
 
   // Click pot of flour in inventory
-  tabBackpack.mouseSlot(2, MOUSE_MOVE);
+  tabBackpack.mouseSlot(3, MOUSE_MOVE);
   fastClick(MOUSE_LEFT);
 
   // Simple failsafe
   if not tabBackPack.isOpen then
   begin
     tabBackPack.open();
-    tabBackpack.mouseSlot(2, MOUSE_MOVE);
+    tabBackpack.mouseSlot(3, MOUSE_MOVE);
     fastClick(MOUSE_LEFT);
   end;
 
@@ -331,7 +444,7 @@ begin
   smartImage.debugTPA(mixTPA, false);
 
   mouseBox(mix, MOUSE_MOVE);
-  wait(randomRange(250, 400));
+  wait(randomRange(250, 500));
   fastClick(MOUSE_LEFT);
   smartImage.clearArea(intToBox(1, 1, 750, 550));
 
@@ -344,8 +457,10 @@ end;
 
 procedure waitDoughing();
 begin
-  if DEBUG then
+  if playerForm.players[currentPlayer].booleans[2] then
     writeLn('Waiting for dough to be made ...');
+
+  paintStatus('Waiting for dough to be made ...');
 
   //antiban();
 
@@ -359,8 +474,11 @@ end;
 
 procedure walkToBank();
 begin
-  if DEBUG then
+  if playerForm.players[currentPlayer].booleans[2] then
     writeLn('Walking back to bank ...');
+
+  paintStatus('Walking back to bank ...');
+
   if SPS.walkPath(pathBank) and tabBackpack.isFull then
     minimap.waitPlayerMoving()
 end;
@@ -371,14 +489,11 @@ end;
  Credits: The Mayor taught me this, Thanks!
 (------------------------------------------------------------}
 
-function outOfFlour(): boolean;
-var
-  x, y, leftInBank: integer;
+function stillHaveFlour(): boolean;
 begin
-  findDTM(potFlourDTM, x, y, bankScreen.getBounds());
-  leftInBank := getItemAmount(bankScreen.getBankSlotBox(bankScreen.pointToSlot([x, y])));
+  result := true;
 
-  if leftInBank < 1 then
+  if (getItemAmount(bankScreen.getBankSlotBox(10)) < 5) then
   begin
     result := false;
     writeLn('Out of flour, terminating script...');
@@ -398,8 +513,10 @@ var
   ATPA: T2DPointArray;
 
 begin
-  if DEBUG then
+  if playerForm.players[currentPlayer].booleans[2] then
     writeLn('Banking ...');
+
+  paintStatus('Banking ...');
 
   // Find banker colors
   findColorsSpiralTolerance(x, y, TPA, 6041158, mainScreen.getBounds(), 11, colorSetting(2, 0.42, 0.69));
@@ -427,8 +544,15 @@ begin
     end;
   end;
 
-  // Uses preset 1, thus depositing current inventory, withdrawing next one
-  bankScreen.clickButton(BANK_BUTTON_PRESET_1);
+  smartImage.clearArea(intToBox(1, 1, 750, 550));
+
+  // Uses preset 1 if the loadsToDo setting is not yet met
+  if loadsDone < (strToInt(playerForm.players[currentPlayer].settings[0])) then
+    bankScreen.clickButton(players[currentPlayer].integers[P_PRESET]);
+
+  // Deposits the final inventory if the loadsToDo setting is met
+  if loadsDone >= (strToInt(playerForm.players[currentPlayer].settings[0])) then
+    bankScreen.quickDeposit(QUICK_DEPOSIT_INVENTORY);
 
 end;
 
@@ -446,33 +570,50 @@ begin
   writeLn('|_______ (____  /__|_|  (____  /_______  /\___  >__|  |__|   __/|__| /____  >');
   wait(125);
   writeLn('        \/    \/      \/     \/        \/     \/         |__|             \/ ');
-  wait(750);
+  wait(125);
   writeLn('');
   writeLn('                         Script: ' + SCRIPT + ' v' + VERSION);
+  wait(500);
   writeLn('');
-  writeLn('                         Loading, please wait....');
+  writeLn('                         Loading, please wait ...');
   writeLn('');
 
+end;
+
+procedure terminate();
+begin
+  overallReport();
+  writeLn('');
+  freeTheDTMs();
 end;
 
 procedure mainLoop();
 begin
 
+  loadsDone := 0;
   //progressReport();
   orientPlayer();
 
   repeat
+    doBanking();
     walkToWell();
     useFlour();
     waitDoughing();
     //antiban();
     walkToBank();
-    doBanking();
     //antiban();
     //progressReport();
-  until outOfFlour;
+    loadsDone := loadsDone + 1;
+    if loadsDone >= (strToInt(playerForm.players[currentPlayer].settings[0])) then
+      doBanking();
+  until(not players[currentPlayer].isActive) or loadsDone >= (strToInt(playerForm.players[currentPlayer].settings[0]));
 
-  //player[currentPlayer].exitToLobby();
+  if loadsDone >= (strToInt(playerForm.players[currentPlayer].settings[0])) then
+    writeLn('Load goal completed, logging out to lobby ...');
+
+  paintStatus('Load goal completed, exiting out to lobby ...');
+
+  players[currentPlayer].exitToLobby();
 
 end;
 
@@ -480,18 +621,29 @@ begin
   clearDebug();
   signature();
 
+  addOnTerminate('terminate');
+
   smartShowConsole := false;
   smartEnableDrawing := true;
   disableSRLDebug := true;
   disguise('LamaDougher');
   setupSRL();
+
   writeLn('');
+
+  initPlayerForm();
+  runPlayerForm();
+
+  if (not playerForm.isScriptReady) then
+    exit;
+
+  declarePlayers();
 
   checkForSPSMap();
   loadDTM();
   loadSPSPath();
+
   getPrices();
 
   mainLoop();
-
 end.
