@@ -1,0 +1,355 @@
+program LamaProduce;
+
+  {$DEFINE SMART}
+  {$I SRL-6/SRL.Simba}
+  {$I SPS/lib/SPS-RS3.Simba}
+  {$i SRL-6/lib/misc/srlplayerform.simba}
+
+const
+
+{ INFO }
+  SCRIPT = 'LamaProduce';
+  VERSION = '1.0';
+
+var
+  debugSRL, debugSMART: boolean;
+  produceTarget: integer;
+  resetPath: TPointArray;
+  g: integer;
+
+procedure initPlayerForm();
+begin
+  with playerForm do
+  begin
+    name := 'LamaProduce v1.0'; // the title of the SPF, usually the name of your script
+    scriptHelpThread := '';    // a link to a help thread, if set to '' will link to my setup guide
+
+    editBoxLabels := ['Produce Target'];
+    editBoxDefaults := ['10000'];
+    editBoxHints := ['How many produce points would you like to make?'];
+
+    checkBoxLabels := ['SMART Debug', 'Debug SRL']; // same as editBoxLabels but for check boxes
+    checkBoxDefaults := ['false', 'false'];
+    checkBoxHints := ['Debug SMART?', 'Debug SRL?'];
+
+  end;
+end;
+
+procedure declarePlayers();
+var
+  i: integer;
+begin
+  players.setup(playerForm.playerNames, playerForm.playerFile);  // load the SPF players from the SRL Player Manager
+  currentPlayer := 0;                // player to use first
+
+  // set player attributes based on the settings from the form
+  for i := 0 to high(players) do
+    with players[i] do
+    begin
+      // integers
+      produceTarget := strToInt(playerForm.players[i].settings[0]);  // Produce Point Target
+
+      // booleans
+      debugSMART := strToBool(playerForm.players[i].settings[1]);  // Debug SMART
+      debugSRL := strToBool(playerForm.players[i].settings[2]);  // Debug SRL
+    end;
+end;
+
+procedure checkForImages(path, link, item: string);
+var
+  progFile: longInt;
+  picName: string;
+
+begin
+  picName := AppPath + path;
+
+  try
+    if not fileExists(picName) then
+    begin
+      writeLn('NOTIFICATION: ' + item + ' does not exist - Downloading it now!.');
+      progFile := createFile(picName);
+    end else
+      exit;
+
+    closeFile(progFile);
+
+    progFile := rewriteFile(picName, false);
+    writeFileString(progFile, getPage(link));
+    writeLn('NOTIFICATION: ' + item + ' has been download to Simba folder!');
+    writeLn('');
+  finally
+    if (progFile > 0) then
+      closeFile(progFile);
+  end;
+end;
+
+procedure loadSPSPath();
+begin
+  resetPath := [Point(76, 62)];
+end;
+
+function findNormalRandoms: boolean;
+begin
+  result := exitSquealOfFortune or claimSpinTicket;
+end;
+
+function proceed(): boolean;
+var
+  upText: string;
+begin
+  repeat
+    upText := getTextAtEx(mainscreen.getBounds, 0, 0, 3, clYellow, 5, 'UpCharsEx');
+    wait(100);
+    if (upText =  'M o r e s p e l l c a s t i n g '' s r e q u i r e d .')
+      or (upText = 'T h e f a r m '' s m o v e d o n t o i t s n e x t s t a g e .')
+      or (upText = 'T i m e f o r m o r e w o r k !')
+      or (upText = 'E v e r y t h i n g '' s a d v a n c e d . H e l p , p l e a s e !')
+      or (upText = 'M o r e s p e l l c a s t i n g '' s r e q u i r e d .') then
+        result := true;
+  until false;
+end;
+
+function conversationOpen(): boolean
+begin
+  result := conversationBox.isOpen();
+end;
+
+function sadPauline(): boolean;
+var
+  x, y, i: integer;
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+  P: TPoint;
+
+begin
+  // Pauline Head
+  findColorsSpiralTolerance(x, y, TPA, 12773612, mainScreen.getBounds(), 15, colorSetting(2, 0.12, 3.17));
+
+  // Pauline Skin
+  //findColorsSpiralTolerance(x, y, TPA, 6855381, mainScreen.getBounds(), 10, colorSetting(2, 0.02, 2.27));
+  // 'rained Pauline Polaris'
+
+  mainScreen.filterPointsPlayer(TPA);
+  //mainScreen.filterPointsPlayer(skinTPA);
+
+  ATPA := TPA.toATPA(20, 20);
+
+  ATPA.sortFromMidPoint(mainScreen.playerPoint);
+
+  smartImage.debugATPA(ATPA);
+
+  for i := 0 to high(ATPA) do
+  begin
+    mouse(middleTPA(ATPA[i]), MOUSE_MOVE);
+    if isMouseOverText(['rained'], 500) then
+      result := true;
+  end;
+end;
+
+procedure clickPauline();
+var
+  x, y, i: integer;
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+  P: TPoint;
+
+begin
+
+  // Pauline Head
+  findColorsSpiralTolerance(x, y, TPA, 12773612, mainScreen.getBounds(), 15, colorSetting(2, 0.12, 3.17));
+
+  // Pauline Skin
+  //findColorsSpiralTolerance(x, y, TPA, 6855381, mainScreen.getBounds(), 10, colorSetting(2, 0.02, 2.27));
+  // 'rained Pauline Polaris'
+
+  mainScreen.filterPointsPlayer(TPA);
+  //mainScreen.filterPointsPlayer(skinTPA);
+
+  ATPA := TPA.toATPA(20, 20);
+
+  ATPA.sortFromMidPoint(mainScreen.playerPoint);
+
+  smartImage.debugATPA(ATPA);
+
+  for i := 0 to high(ATPA) do
+  begin
+    mouse(middleTPA(ATPA[i]), MOUSE_MOVE);
+    if isMouseOverText(['rained'], 500) then
+    begin
+      fastClick(MOUSE_RIGHT);
+      if (chooseOption.isOpen) then
+      begin
+        if chooseOption.optionsExist(['ncourage']) then
+        begin
+          chooseOption.select(['Encourage', 'ncourag']);
+          break;
+        end;
+      end;
+    end;
+  end;
+
+  waitFunc(@conversationOpen, 100, (randomRange(100, 1000)));
+  smartImage.clearArea(mainScreen.getBounds());
+end;
+
+function findLividBin(): boolean;
+var
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+  searchBox: TBox;
+  P: TPoint;
+  i: integer;
+
+begin
+
+end;
+
+procedure encourage();
+begin
+  if not conversationBox.isOpen then
+    exit;
+
+  wait(randomRange(800, 1750));
+
+  if conversationBox.findOption(['ome on, you''re doing', 're doing so well']) then
+    conversationBox.selectOption(['ome on, you''re doing', 're doing so well']);
+
+  if conversationBox.findOption(['eep going! We can do']) then
+    conversationBox.selectOption(['eep going! We can do']);
+
+  if conversationBox.findOption(['ook at all the produce be']) then
+    conversationBox.selectOption(['ook at all the produce be']);
+
+  if conversationBox.findOption(['okar will really appreci']) then
+    conversationBox.selectOption(['okar will really appreci']);
+
+  if conversationBox.findOption(['xtraordinary!']) then
+    conversationBox.selectOption(['xtraordinary!']);
+
+  if conversationBox.findOption(['re doing a fantastic job', 'ou''re doing a fantastic job', 're doinq a fantastic job']) then
+    conversationBox.selectOption(['re doing a fantastic job', 'ou''re doing a fantastic job']);
+end;
+
+procedure getLivids();
+begin
+
+end;
+
+procedure stringLivids();
+begin
+
+end;
+
+procedure depositLivids();
+begin
+
+end;
+
+procedure reset();
+begin
+  if SPS.walkPath(resetPath) then
+    minimap.waitPlayerMoving();
+end;
+
+procedure antiban();
+Var
+  I: Integer;
+Begin
+  SmartImage.Clear;
+  I := Random(600);
+  Case I Of
+    1: begin boredHuman(true); MainScreen.SetAngle(MS_ANGLE_HIGH); minimap.setAngle(MM_DIRECTION_NORTH); end;
+    2..7:
+      Begin
+        hoverSkill(Skill_Farming);
+        Wait(GaussRangeInt(600,2000));
+        TabBackpack.Open;
+      End;
+    8..50: mouseMovingObject;
+    51..100: SleepAndMoveMouse(GaussRangeInt(100,5000));
+    101..400:
+      Begin
+        MouseOffClient(Random(4));
+        Wait(GaussRangeInt(0, 10000));
+      End;
+    501..600: Wait(GaussRangeInt(0, 2000));
+
+  End;
+  Wait(GaussRangeInt(0, 2000));
+end;
+
+procedure setup();
+begin
+  clearDebug();
+  smartEnableDrawing := true;
+
+  initPlayerForm();
+  runPlayerForm();
+
+  if (not playerForm.isScriptReady) then
+    terminatescript;
+
+  declarePlayers();
+
+  setupSRL();
+
+  //checkForImages('Includes\SPS\img\runescape_surface\LIVID_FARM0.png', 'https://i.imgur.com/ATqCL5p.png', 'SPS map');
+  //checkForImages('Scripts\lamascripts\producepaint.png', 'https://i.imgur.com/iOvGhCY.png', 'Paint image');
+
+  //PaintBitmap := loadBitmap(appPath + '\Scripts\lamascripts\producepaint.png');
+
+  loadSPSPath();
+
+  if not isLoggedIn then
+  begin
+    if not players[currentPlayer].login then
+      terminateScript;
+
+    writeln('Just logged in, waiting a bit');
+    wait(RandomRange(6000,10000));
+  end;
+
+  if not debugSRL then
+    disableSRLDebug := true
+  else
+    disableSRLDebug := false;
+
+  clearDebug();
+
+  minimap.clickCompass;
+  mainscreen.setAngle(MS_ANGLE_HIGH);
+  findNormalRandoms();
+end;
+
+procedure mainLoop();
+var
+  p: TPoint;
+
+begin
+  g := 0;
+  wait(randomRange(750, 2250));
+
+  if sadPauline then
+  begin
+    clickPauline();
+    encourage();
+  end;
+
+  if findLividBin then
+  begin
+    getLivids();
+    stringLivids();
+    depositLivids();
+    reset();
+  end;
+
+  antiban();
+
+  waitFunc(@proceed, 25, randomRange(31500, 35000));
+end;
+
+begin
+  setup();
+  while (players.getActive() > 0) do
+    mainLoop();
+end.

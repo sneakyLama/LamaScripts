@@ -1,0 +1,250 @@
+// Lama's Competition Entry for The Mayor's Big 200m Scripting Competition
+
+program CabbageLiberator;
+  {$DEFINE SMART}
+  {$I SRL-6/SRL.Simba}
+  {$I SPS/lib/SPS-RS3.Simba}
+  {$i SRL-6/lib/misc/srlplayerform.simba}
+const
+  HEALTH = 210;
+  SCRIPT = 'Lama''s Cabbage Taste Tester';
+  VERSION = ' v1.0';
+var
+  cabbageDTM, cabbageToPick, cabbageAmount, cabbagesEaten, cabbageAdd, cabbagePrice, lostProfit, lostHealth: integer;
+  debugSRL, debugSMART, debugProggy: boolean;
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+
+procedure initPlayerForm(); // What is on the playerForm
+begin
+  with playerForm do
+  begin
+    name := 'Lama''s Cabbage Taste Tester'; // the title of the SPF, usually the name of your script
+    scriptHelpThread := 'https://villavu.com/forum/showthread.php?t=110594';    // a link to a help thread, if set to '' will link to my setup guide
+
+    editBoxLabels := ['Pick How Many'];
+    editBoxDefaults := ['9001'];
+    editBoxHints := ['How many cabbages do you want to pick?'];
+
+    checkBoxLabels := ['Progress Report', 'SMART Debug', 'Debug SRL']; // same as editBoxLabels but for check boxes
+    checkBoxDefaults := ['true', 'false', 'false'];
+    checkBoxHints := ['See a report for statistics and things?', 'Debug SMART?', 'Debug SRL?'];
+  end;
+end;
+
+procedure declarePlayers(); // Declare player and variables from playerForm
+var
+  i: integer;
+begin
+  players.setup(playerForm.playerNames, playerForm.playerFile);  // load the SPF players from the SRL Player Manager
+  currentPlayer := 0; // player to use first
+
+  // set player attributes based on the settings from the form
+  for i := 0 to high(players) do
+    with players[i] do
+    begin
+      // integers
+      cabbageToPick := strToInt(playerForm.players[i].settings[0]);  // Produce Point Target
+
+      // booleans
+      debugProggy := strToBool(playerForm.players[i].settings[1]);
+      debugSMART := strToBool(playerForm.players[i].settings[2]);  // Debug SMART
+      debugSRL := strToBool(playerForm.players[i].settings[3]);  // Debug SRL
+    end;
+end;
+
+{------------------------------------------------------------------------------)
+ Function: getGEPrice
+ Description: Finds price of an item off the wiki
+ Credits: The Mayor
+(------------------------------------------------------------------------------}
+function getGEPrice(itemString: string): integer;
+var
+  wikiaPage, priceString: string;
+
+begin
+  wikiaPage := getPage('http://runescape.wikia.com/wiki/Exchange:' + itemString);
+  priceString := between('GEPrice">', '</span>', wikiaPage);
+  result := strToIntDef(extractFromStr(priceString, numbers), -1);
+  writeLn('-- ' + itemString + ' price: ' + toStr(result));
+end;
+
+{------------------------------------------------------------------------------)
+ Function: perHour
+ Description: Converts an integer to a 'per hour' amount.
+ Credits: Coh3n
+(------------------------------------------------------------------------------}
+
+function perHour(amt, time: integer): integer;
+begin
+  if (amt = -1) then
+  begin
+    result := -1;
+    exit;
+  end;
+
+  try
+    result := round((amt * 60) / (time / 60000));
+  except
+  end;
+end;
+
+function findNormalRandoms: boolean;
+begin
+  result := exitSquealOfFortune or claimSpinTicket;
+end;
+
+procedure antiban();  // Some basic antiban to spice things up
+var
+  i: integer;
+begin
+  i := random(600);
+  case i of
+    1..10:
+    begin
+      boredHuman(true);
+      minimap.clickCompass();
+      mainScreen.setAngle(MS_ANGLE_HIGH);
+    end;
+    11..190:
+    begin
+      sleepAndMoveMouse(randomRange(100, 1250));
+    end;
+  end;
+end;
+
+procedure pickCabbages(); // Pretty much the only thing the script actually does happens in the next 25 lines
+var
+  x, y, i: integer;
+begin
+  findColorsSpiralTolerance(x, y, TPA, 2211465, mainScreen.getBounds(), 29, colorSetting(2, 0.07, 1.03));
+  mainScreen.filterPointsPlayer(TPA);
+  ATPA := TPA.toATPA(20, 20);
+  ATPA.sortFromMidPoint(mainScreen.playerPoint);
+
+  if debugSMART then
+    smartImage.debugATPA(ATPA);
+
+  for i := 0 to high(ATPA) do
+  begin
+    mouse(middleTPA(ATPA[i]), MOUSE_MOVE);
+    if isMouseOverText(['ick'], 500) then
+    begin
+      fastClick(MOUSE_LEFT);
+      antiban();
+      tabBackpack.waitForShift(5000);
+      minimap.waitPlayerMoving();
+      wait(randomRange(1200, 1550));
+      break;
+    end;
+  end;
+end;
+
+function inPosition(): boolean;  // Checks if the player is where they are supposed to be...
+begin
+  result := pointInBox(SPS.getPlayerPos(), intToBox(70, 70, 127, 90));
+end;
+
+function likesCabbage(): boolean;  // A failsafe for life
+begin
+  if chatbox.findTextOnLines(['Wow! Cabbage is just so darn good!'], [0..3]) then
+    result := true;
+end;
+
+procedure proggy(); // Progress Report outputted to the debug
+begin
+  clearDebug();
+
+  writeLn('|=====================================|');
+  writeLn('   ' + SCRIPT + VERSION);
+  writeLn('                                      ');
+  writeLn('  Time Running: ' + (msToTime(getTimeRunning, TIME_ABBREV)));
+  writeLn('  Cabbages Picked: ' + toStr(cabbageAmount) + '/' + toStr(cabbageToPick));
+  writeLn('  Profit Eaten: ' + toStr(cabbagePrice * cabbageAmount) + ' (' + (toStr((perHour((cabbagePrice * cabbageAmount), getTimeRunning())))) + ' P/H)');
+  writeLn('  Potential Health Restored: ' + toStr(HEALTH * cabbageAmount));
+  writeLn('  Weight Gain: ' + toStr(7 * cabbageAmount) + ' lbs (' + toStr(ceil((7 * cabbageAmount) / 2.2)) + ' kg)');
+  writeLn('                                       ');
+  writeLn('|=====================================|');
+end;
+
+procedure setup(); // Sets up all the necessaries
+begin
+  clearDebug();
+  smartEnableDrawing := true;
+  initPlayerForm();
+  runPlayerForm();
+
+  if (not playerForm.isScriptReady) then
+    terminatescript;
+
+  declarePlayers();
+  setupSRL();
+
+  addOnTerminate('terminate');
+
+  if not debugSRL then
+    disableSRLDebug:=true
+  else
+    disableSRLDebug:=false;
+  clearDebug();
+
+  SPS.setup('CABBAGE_COMP00', RUNESCAPE_SURFACE);
+  cabbageDTM := DTMFromString('mrAAAAHic42BgYLjKxMDwBIhvAvFpID7DBBG7B8SPgbiKkYGhAohbgbgBiIuBuACIC4G4GYjLZ7sATWHCg/EDRgIYBgCCDwwa');
+
+  cabbagePrice := getGEPrice('Cabbage');
+end;
+
+procedure terminate();
+begin
+  freeDTM(cabbageDTM);
+  proggy();
+end;
+
+procedure mainLoop();  // The meat, potatoes and... cabbage... of the script
+begin
+  if not isLoggedIn then
+  begin
+    if not players[currentPlayer].login then
+      terminateScript;
+    writeln('Just logged in, waiting a bit');
+    wait(RandomRange(3000, 6500));
+  end;
+  minimap.clickCompass();
+  mainScreen.setAngle(MS_ANGLE_HIGH);
+  findNormalRandoms();
+  writeLn('The Mayor is the best.');
+  wait(500);
+  proggy();
+  repeat
+    repeat
+      if not inPosition then
+      begin
+        SPS.walkPath([Point(103, 82)]);
+        minimap.waitPlayerMoving();
+      end;
+      if tabBackpack.isFull() then
+        break;
+      pickCabbages();
+      antiban();
+      smartImage.clear();
+    until tabBackpack.isFull();
+
+    cabbageAmount := cabbageAmount + tabBackpack.countDTM(cabbageDTM);
+    writeLn('Eating cabbages ...');
+    tabBackpack.clickDTM(cabbageDTM, MOUSE_LEFT, '', randomRange(1600, 1900), true); // Eats all cabbages in inventory
+    antiban();
+
+    proggy();
+  until cabbageAmount >= cabbageToPick or likesCabbage();
+
+  if likesCabbage() then
+    typeSend('uwotm8', true);
+
+  players[currentPlayer].exitToLobby();
+end;
+
+begin
+  Setup;
+  while (players.getActive() > 0) do
+    mainLoop();
+end.
