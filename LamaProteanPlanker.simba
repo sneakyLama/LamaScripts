@@ -1,0 +1,164 @@
+program ProteanPlanker;
+{$DEFINE SMART}
+{$I SRL-6/SRL.Simba}
+
+ const
+{               |=|=|    S E T U P   |=|=|
+ 1. Input constants info, lines 17-18
+ 2. Stand directly west of Shantay Pass bank chest
+ 3. Have full inv of logs in preset 1
+ 4. Have extra portable sawmills in slot 10 (far right, top row) of bank
+ 5. Zoom all the way in
+ 6. Hit RUN
+ 7. Get them protean
+}
+
+//////////////////////////////////// START ///////////////////////////////////////
+
+  USERNAME = ['batkiller456']; // Username
+  FILE_NAME = 'default'; // Your army file name (normally default)
+
+//////////////////////////////////// STOP ///////////////////////////////////
+
+var
+  chatOne: TBox;
+
+procedure antiban;
+begin
+  case random(101) of
+    0: pickUpMouse();
+    1..6: mouseMovingObject();
+    7..12: sleepAndMoveMouse(randomRange(750, 1750));
+    12..18: wait(randomRange(250, 1250));
+    19..25: smallRandomMouse();
+  end;
+end;
+
+function noMill(): boolean;
+var
+  sawBox: TBox;
+begin
+  if bankScreen.isOpen(500) then
+    bankScreen.clickButton(BANK_BUTTON_PRESET_1);
+  sawBox := [249, 271, 302, 301];
+  if not sawBox.colorExists(3370399, 19) then
+  begin
+    writeLn('No sawmill found ...');
+    result := true;
+  end;
+end;
+
+procedure makePlanks();
+begin
+  if (tabBackpack.count() <= 27) then
+    exit;
+  writeLn('Clicking sawmill ...');
+  mouseOval(274, 286, 20, 15, MOUSE_MOVE);    // Clicks sawmill
+  wait(225 + random(250));
+  if isMouseOverText(['awmill', 'Portable sa', 'mill', 'saw'], 500) then
+    fastclick(MOUSE_LEFT)
+  else
+  begin
+    writeLn('Something didn''t happen while clicking sawmill ...');
+    exit;
+  end;
+  writeLn('Making planks ...');
+  wait(randomRange(950, 1800));
+  begin                          // Inputs info for making planks
+    case random(120) of
+      0..100: typesend('123', true);
+      101..110: typesend('31', true);
+      111..120: typesend('32', true);
+    end;
+    wait(randomRange(1000, 1500));
+    typesend('1', false);
+    antiban();
+    mouseOval(378, 197, 45, 60, MOUSE_MOVE);
+    tabBackpack.waitSlotPixelChange(28, 4000);
+    wait(randomRange(250, 675));
+  end;
+end;
+
+
+procedure doBanking;
+begin
+  if noMill() then     // If there is not a mill placed, it will withdraw from bank slot 10 and place
+  begin
+    writeLn('Going to place a new mill ...');
+    mouseBox([358, 178, 398, 225], MOUSE_MOVE);
+    if IsMouseOverText(['Shantay c', 'y chest'], 500) then
+      fastclick(MOUSE_LEFT);
+    if bankScreen.isOpen(1250) or pinScreen.isOpen(1250) then
+    begin
+      if pinScreen.isOpen() then
+        pinScreen.enter(players[currentPlayer].bankPin);
+      mouseBox([393, 564, 420, 585], MOUSE_LEFT);
+      wait(randomRange(250, 750));
+      if not bankscreen.withdraw(10, 1, ['ortable', 'mill']) then
+      begin
+        writeLn('No extra mills left ... terminating script ...');
+        terminateScript();
+      end;
+      antiban();
+      wait(randomRange(1250, 1800));
+      bankScreen.close();
+      wait(randomRange(500, 1400));
+      if tabBackpack.mouseSlot(1, MOUSE_MOVE) then
+      begin
+        if isMouseOverText(['ortabl', 'aw', 'mill']) then
+          fastClick(MOUSE_LEFT);
+        antiban();
+        if conversationBox.isOpen(1500) then
+          conversationBox.selectOption(1);
+        writeLn('New mill placed successfully ...');
+        wait(randomRange(500, 1250));
+      end;
+    end;
+  end;
+
+  writeLn('Banking ...');
+  mouseBox([358, 178, 398, 225], MOUSE_MOVE);    // Normal bank procedure, if mill is placed
+  if IsMouseOverText(['Shantay c', 'y chest'], 500) then
+    fastclick(MOUSE_LEFT);
+  if bankScreen.isOpen(1250) or pinScreen.isOpen(1250) then
+  begin
+    if pinScreen.isOpen() then
+      pinScreen.enter(players[currentPlayer].bankPin);
+    bankScreen.clickButton(BANK_BUTTON_PRESET_1);
+  end;
+  if not bankScreen.isOpen(1000) then
+end;
+
+procedure mainLoop();
+begin
+  if not isLoggedIn() then
+    exit;
+  if chatOne.colorExists(14783855, 2) then // The lightish blue text (if not customized?)
+    begin
+      repeat
+        typeByteWait(VK_ESCAPE, randomRange(50, 75)); // Failsafe for mistypes during makePlanks
+      until chatOne.colorExists(9408398, 2); // The gray '[Press enter to talk]' text
+    end;
+  begin
+    doBanking();
+    if not noMill() then
+      makePlanks;
+  end;
+  if (tabBackpack.isEmpty) then
+  begin
+    clearDebug();
+    writeLn('Failed to withdraw anything.');
+    terminateScript;
+  end;
+end;
+
+begin
+  clearDebug();
+  setupSRL();
+  minimap.clickCompass;
+  mainScreen.setAngle(MS_ANGLE_HIGH);
+  chatOne := [107, 577, 173, 595];
+  repeat
+    mainLoop();
+  until false;
+end.

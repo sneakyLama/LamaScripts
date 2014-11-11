@@ -6,7 +6,7 @@ program LamaLantadymer;
 const
 
 { Script Info }
-  SCRIPT = 'LamaLantadymer';
+  SCRIPT = 'LamaHerber';
   VERSION = ' v1.0';
 
 { Player Form }
@@ -18,7 +18,8 @@ const
 var
   loadsDone, profitPerHour, profitMade: integer;
   herbPrice, vialPrice, potPrice, finPrice: integer;
-  herbDTM: integer;
+  waterDTM: integer;
+  bankBox: TBox;
 
 procedure initPlayerForm();
 begin
@@ -76,7 +77,12 @@ end;
 
 procedure loadDTM;
 begin
-  herbDTM :=  DTMFromString('mrAAAAHic42BgYFjPxMCwDYh3A/EOIF4FxPOBeBkQrwPiMEYGhkAg9gfiSCCOAeJQIPYFYk8g5okwB5rChBODSHyAkQCGAQDd6gjf');
+  waterDTM :=  DTMFromString('mlwAAAHicY2dgYAhhYmCIAeIkII4CYn8miFgCSJyRgSEAiOOAOBWI44HYH4ijgLi6eSdQNxNWzMyAGzDiwVAAAP5oBtA=');
+end;
+
+procedure freeTheDTMs();
+begin
+  freeDTM(waterDTM);
 end;
 
 function getGEPrice(itemString: String): Integer;
@@ -126,14 +132,19 @@ begin
     1:
     begin
       boredHuman(true);
-      MainScreen.SetAngle(MS_ANGLE_HIGH);
-      minimap.setAngle(MM_DIRECTION_NORTH);
+      minimap.clickCompass();
+      mainScreen.SetAngle(MS_ANGLE_HIGH);
     end;
-    2..400:
+    2..300:
     begin
       mouseSpeed := 40;
       sleepAndMoveMouse(randomRange(100, 500));
       mouseSpeed := 20;
+    end;
+    301..400:
+    begin
+      sleepAndMoveMouse(randomRange(400, 1000));
+      mouseBox(bankBox, MOUSE_MOVE);
     end;
     401..500:
     begin
@@ -145,12 +156,10 @@ end;
 
 procedure bank();
 var
-  bankBox: TBox;
   TPA: TPointArray;
   ATPA: T2DPointArray;
   i: integer;
 begin
-  bankBox := [309, 174, 342, 205];
   mouseBox(bankBox, MOUSE_MOVE);
   if isMouseOverText(['ank']) then
     fastClick(MOUSE_LEFT);
@@ -161,33 +170,43 @@ begin
       pinScreen.enter(Players[currentPlayer].bankPin);
     wait(randomRange(500, 750));
     bankScreen.clickButton(players[currentPlayer].integers[P_PRESET]);
-    if not bankScreen.isOpen(1000) then
   end;
+  if not bankScreen.isOpen(1000) then
 end;
 
 procedure mixPot();
 var
   makeTimer: TTimeMarker;
+  i: integer;
+  getOut: TBox;
 begin
+  getOut := [0, 0, 800, 314];
+  i := 0;
   if (tabBackpack.count() < 28) then
   begin
     tabBackpack.mouseSlot(1, MOUSE_MOVE);
-    if isMouseOverText(['antadym', 'lean']) then
-      fastClick(MOUSE_LEFT);
-    if not isMouseOverText(['antadym', 'lean']) then
-    begin
-      writeLn('No Lantadyme left ...');
-      players[currentPlayer].exitToLobby();
-      terminateScript();;
-    end;
-    tabBackpack.mouseSlot(2, MOUSE_MOVE);
     if isMouseOverText(['ial of', 'ater']) then
       fastClick(MOUSE_LEFT);
     if not isMouseOverText(['ial of', 'ater']) then
     begin
       writeLn('No water vials left ...');
       players[currentPlayer].exitToLobby();
+      if i >= 1 then
+      begin
+        bank();
+        i := i + 1;
+        exit;
+      end;
       terminateScript();
+    end;
+    tabBackpack.mouseSlot(2, MOUSE_MOVE);
+    if isMouseOverText(['lean']) then
+      fastClick(MOUSE_LEFT);
+    if not isMouseOverText(['lean']) then
+    begin
+      writeLn('No herbs left ...');
+      players[currentPlayer].exitToLobby();
+      terminateScript();;
     end;
     if productionScreen.isOpen(1500) then
     begin
@@ -201,32 +220,36 @@ begin
   end;
 
   tabBackpack.mouseSlot(1, MOUSE_MOVE);
-  if isMouseOverText(['antadym', 'lean']) then
+  if isMouseOverText(['ial of', 'ater']) then
     fastClick(MOUSE_LEFT);
   tabBackpack.mouseSlot(2, MOUSE_MOVE);
-  if isMouseOverText(['ial of', 'ater']) then
+  if isMouseOverText(['lean']) then
     fastClick(MOUSE_LEFT);
 
   if productionScreen.isOpen(1500) then
   begin
     productionScreen.clickStart();
-    antiban();
-    tabBackpack.waitSlotPixelChange(28, 17500)
+    case random(2) of
+      0:
+      begin
+        mouseBox(getOut, MOUSE_MOVE);
+        antiban();
+      end;
+      1: mouseBox(bankBox, MOUSE_MOVE);
+    end;
   end;
+  if tabBackpack.waitSlotPixelChange(15, 17500) and tabBackpack.countDTM(waterDTM) < 1 then
 end;
 
 procedure proggy();
 begin
   clearDebug();
 
-  profitMade := profitMade + profit(tabBackpack.countDTM(herbDTM));
-
   writeLn('|=====================================|');
   writeLn('         ' + SCRIPT + VERSION + '         ');
   writeLn('                                      ');
   writeLn('  Time Running  : ' + (msToTime(getTimeRunning, TIME_ABBREV)));
   writeLn('  Loads Done    : ' + toStr(loadsDone) + '/' + (toStr(playerForm.players[currentPlayer].settings[0])) + ' loads');
-  writeLn('  Approx. Profit: ' + toStr(profitMade));
   writeLn('                                       ');
   writeLn('|=====================================|');
 end;
@@ -249,12 +272,9 @@ begin
     disableSRLDebug:=true
   else
     disableSRLDebug:=false;
-  herbPrice := getGEPrice('Clean_lantadyme');
-  vialPrice := getGEPrice('Vial_of_water');
-  potPrice := herbPrice + vialPrice;
-  finPrice := getGEPrice('Lantadyme_potion_(unf)') - potPrice;
 
   loadDTM();
+  addOnTerminate('freeTheDTMs');
   clearDebug();
 end;
 
@@ -273,6 +293,7 @@ begin
 
   profitMade := 0;
   loadsDone := 0;
+  bankBox := [309, 180, 330, 205];
 
   repeat
     bank();

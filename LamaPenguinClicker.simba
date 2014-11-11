@@ -6,9 +6,8 @@ program LamaClockworkAgility;
 const
   SCRIPT = 'Lama''s Penguin Clicker';
   VERSION = ' v1.0';
-
 var
-  xpStart, xpCurrent, xpGained, xpPerHour, timeLeft, breakTime, paintBitmap: integer;
+  xpStart, xpCurrent, xpGained, xpPerHour, timeLeft, breakTime, paintBitmap, z, dumbInt: integer;
   break, debugSRL, debugSMART, paintProggy: boolean;
   progTime, scriptTime: TTimeMarker;
   windHotK, releaseHotK: string;
@@ -43,7 +42,6 @@ begin
       breakTime := strToInt(playerForm.players[i].settings[1]); // How long to break for if to break
       windHotK := playerForm.players[i].settings[2];   // Hotkey assignment for winding penguins
       releaseHotK := playerForm.players[i].settings[3];   // Hotkey assignment for releasing wound penguins
-
       world := strToInt(playerForm.players[i].settings[4]);
 
       break := strToBool(playerForm.players[i].settings[5]); // To break or not to break, that is the question
@@ -79,16 +77,16 @@ begin
   typeSend(releaseHotK, false);
   wait(randomRange(65, 100));
   fastClick(MOUSE_LEFT);
-  case (random(20) + 1) of  // For extra human-esque hotkeying and clicking
-    1..5:
-    begin
-      typeSend(windHotK, false);
+  case (random(20) + 1) of  // For extra human-esque hotkeying and clicking, tried to be as spammy
+    1..5:                   //                                                   as possible
+    begin                   // [This area is where to tweak to speed up script, it can be faster]
+      typeSend(windHotK, false); // <-- Wind penguin
       wait(randomRange(75, 145));
       fastClick(MOUSE_LEFT);
     end;
     6..10:
     begin
-      typeSend(releaseHotK, false);
+      typeSend(releaseHotK, false); // -- Release wound penguin
       wait(randomRange(75, 145));
       fastClick(MOUSE_LEFT);
     end;
@@ -132,8 +130,6 @@ var
   TPA: TPointArray;
   ATPA: T2DPointArray;
 begin
-  minimap.setAngle(MM_DIRECTION_EAST);
-  mainScreen.setZoom(true);
   findColorsSpiralTolerance(x, y, TPA, 10005418, mainScreen.getBounds(), 14, colorSetting(2, 0.11, 0.45));
   mainScreen.filterPointsPlayer(TPA);
   ATPA := TPA.toATPA(30, 30);
@@ -168,14 +164,14 @@ begin
     smartImage.drawText(groupDigits(xpGained, ',') + ' (' + (groupDigits(xpPerHour, ',')) + ' P/H)', Point(413, 520), UpCharsEx, false, clYellow);
   end;
   clearDebug();
-  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
-  writeLn('|            ' + SCRIPT + VERSION + '          |');
-  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
-  writeLn(padR('| Time Running: ' + timeRunning, 50) + '|');
-  writeLn(padR('| Approx. Time Left: ' + msToTime((timeLeft * 60000) - scriptTime.getTime(), TIME_ABBREV), 50) + '|');
-  writeLn(padR('| Penguins Caught: ' + groupDigits((round(xpGained / 12.5)), ','), 50) + '|');
-  writeLn(padR('| XP Gained: ' + groupDigits(xpGained, ',') + ' (' + groupDigits(xpPerHour, ',') + ' P/H)', 50) + '|');
-  writeLn('|_________________________________________________|');
+  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
+  writeLn('|            ' + SCRIPT + VERSION + '            |');
+  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
+  writeLn(padR('| Time Running: ' + timeRunning, 52) + '|');
+  writeLn(padR('| Approx. Time Left: ' + msToTime((timeLeft * 60000) - scriptTime.getTime(), TIME_ABBREV), 52) + '|');
+  writeLn(padR('| Penguins Caught: ' + groupDigits((round(xpGained / 12.5)), ','), 52) + '|');
+  writeLn(padR('| XP Gained: ' + groupDigits(xpGained, ',') + ' (' + groupDigits(xpPerHour, ',') + ' P/H)', 52) + '|');
+  writeLn('|___________________________________________________|');
   progTime.start();
 end;
 
@@ -197,6 +193,7 @@ begin
     disableSRLDebug:=true
   else
     disableSRLDebug:=false;
+  dumbInt := 0; // <-- Is used with breaking, see line 210
 end;
 
 procedure mainLoop();  // What the script actually does
@@ -205,15 +202,15 @@ begin
   begin
     if not players[currentPlayer].login then
       terminateScript;
-    writeLn('Just logged in... waiting for a moment');
-    wait(randomRange(1000, 4500));
+    writeLn('Just logged in... waiting for a moment'); wait(randomRange(1000, 3500));
   end;
+  if dumbInt < 1 then begin xpStart := chatBox.getXPBar(); dumbInt := 1; end;
   minimap.clickCompass();
   mainScreen.setAngle(MS_ANGLE_HIGH);
   mainScreen.setZoom(true);
   findNormalRandoms();
-  xpStart := chatBox.getXPBar();
   scriptTime.start();  // Accurate measurement of productive script runtime
+  timeLeft := timeLeft + scriptTime.getTime();
   while (scriptTime.getTime() < (timeLeft * randomRange(59000, 61000))) do
   begin
     progressReport();
@@ -222,9 +219,14 @@ begin
     antiban();
   end;
   scriptTime.pause();
-  repeat
-    pickUpPenguins();
-  until not penguinsLeft();
+  minimap.setAngle(MM_DIRECTION_EAST);
+  mainScreen.setZoom(true);
+  for z := 0 to 2 do // <-- Stupid Failsafe
+    repeat
+      writeLn('Checking for penguins [' + toStr(z + 1) + '/3]');
+      pickUpPenguins();
+      wait(randomRange(500, 1000));
+    until not penguinsLeft();
   wait(randomRange(1000, 2000));
   progressReport();
   players[currentPlayer].exitToLobby();
@@ -239,6 +241,7 @@ begin
       mainLoop();
       writeLn('Breaking ...');
       wait(breakTime * randomRange(55000, 70000));
+      scriptTime.reset();
     end;
   end;
   if not break then  // If not to break, will run until timeLeft runs out, then logs out for good

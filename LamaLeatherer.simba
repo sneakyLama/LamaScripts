@@ -13,7 +13,7 @@ const
   P_LOADS_TO_DO = 0;
   P_HOTK_MAKE   = '7';
   P_HIDE        = 0;
-  P_BANK_DIR    = 4;
+  P_BANK_DIR    = 0;
 
 { Hides }
   HIDE_ROYAL = 0;
@@ -119,9 +119,9 @@ begin
         '2': integers[P_PRESET] := BANK_BUTTON_PRESET_2;
       end;
 
-      integers[P_HIDE] := strToHide(playerForm.players[i].settings[7]);
+      integers[P_HIDE] := strToHide(playerForm.players[i].settings[7]); // Which Hide to use
 
-      case playerForm.players[i].settings[9] of                    // Bank Preset
+      case playerForm.players[i].settings[9] of                    // Bank Direction
         'North': integers[P_BANK_DIR] := BANK_NORTH;
         'East': integers[P_BANK_DIR] := BANK_EAST;
         'South': integers[P_BANK_DIR] := BANK_SOUTH;
@@ -172,25 +172,27 @@ function setBankBox(dir: integer): TBox;
 var
   direction: string;
 begin
-  if dir = BANK_EAST then
-  begin
-    result := [309, 174, 342, 205];
-    direction := 'East';
-  end;
-  if dir = BANK_SOUTH then
-  begin
-    result := [274, 213, 298, 234];
-    direction := 'South';
-  end;
-  if dir = BANK_WEST then
-  begin
-    result := [249, 179, 270, 206];
-    direction := 'West';
-  end;
-  if dir = BANK_NORTH then
-  begin
-    result := [275, 161, 300, 181];
-    direction := 'North';
+  case dir of
+    BANK_EAST:
+    begin
+      result := [309, 174, 342, 205];
+      direction := 'East';
+    end;
+    BANK_SOUTH:
+    begin
+      result := [274, 213, 298, 234];
+      direction := 'South';
+    end;
+    BANK_WEST:
+    begin
+      result := [249, 179, 270, 206];
+      direction := 'West';
+    end;
+    BANK_NORTH:
+    begin
+      result := [275, 161, 300, 181];
+      direction := 'North';
+    end;
   end;
 
   writeLn('Bank is: ' + direction);
@@ -305,6 +307,12 @@ begin
       players[currentPlayer].exitToLobby();
       terminateScript();
     end;
+
+    typeSend(P_HOTK_MAKE, false);
+    tabBackpack.mouseSlot(3, MOUSE_MOVE);
+    if isMouseOverText(['ragonhi', 'hide']) then
+      fastClick(MOUSE_LEFT);
+
     if productionScreen.isOpen(1500) then
     begin
       productionScreen.clickStart();
@@ -393,6 +401,7 @@ begin
 
   xpGained := 0;
   profitTotal := 0;
+  loadsDone := 0;
 
   scriptTime.start();
   repeat
