@@ -1,5 +1,5 @@
 {=================================================================\
-|                      Lama's Edgeville Dougher                   |
+|                          Edgeville Dougher                      |
 |                              by Lama                            |
 |=================================================================|
 |                                                                 |
@@ -23,12 +23,6 @@
 
 (=============================== STOP =============================)
 
-(:::::::::::::::::::::::::::::: TO  DO ::::::::::::::::::::::::::::)
-
- 1. Make progress paint better than it is (95%)
-
-(::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::}
-
 program LamaDougher;
 
 {$DEFINE SMART}
@@ -48,7 +42,7 @@ const
 // Global Variables
 
 var
-  potFlourDTM, antibanCount: integer;
+  flourDTM, antibanCount: integer;
   loadsDone, loadsToDo, profit, profitPerHour, profitMade, PaintBitmap: integer;
   flourPrice, doughPrice: integer;
   oriented: boolean;
@@ -57,14 +51,13 @@ var
 // Load DTMs
 procedure loadDTM();
 begin
-  potFlourDTM := DTMFromString('m1gAAAHic42KAgL//////DcTfgPgLEH+GYhD/FxCzQNV9gop/B+I/QMwIFGMDYm4g5oPiQn9DIMlEEIsASUYqYgQAAALfMNM=');
-  //potFlourDTM := DTMFromString('mbQAAAHicY2VgYAhjYmBIBeJQIPZhgvD9GRkYgoE4BYiDgNgDiB/euA5UzYSCWRkwASMWDAYA0PMGCQ==');
+  flourDTM :=  DTMFromString('mlwAAAHicY2dgYGhiYmCoAOJSKA3i9wFxDxBHMjIw+DFC6EQgTgHiOKhYaZAxUDcTVszKgBsw4sFQAABKcQcj');
 end;
 
 // Free DTMs
 procedure freeTheDTMs();
 begin
-  freeDTM(potFlourDTM);
+  freeDTM(flourDTM);
 end;
 
 // Sets up the UI for things
@@ -81,9 +74,9 @@ begin
     // optional hints for each edit box; hints are shown when the user holds the mouse over the component
     editBoxHints := ['How many inventories of dough to make?'];
 
-    checkBoxLabels := ['Save SRL log', 'Paint Status', 'Output Debug', 'Debug Progress']; // same as editBoxLabels but for check boxes
+    checkBoxLabels := ['Save SRL log', 'Debug/Paint Status', 'Debug SMART', 'Text Progress Report']; // same as editBoxLabels but for check boxes
     checkBoxDefaults := ['true', 'false', 'false', 'false'];
-    checkBoxHints := ['Do you want to save SRL debug to a log file (recommended)?', 'Want to see what the script is currently doing on SMART?', 'Output what the script is currently doing into the debug box?', 'Debug the progress report to the debug box?'];
+    checkBoxHints := ['Do you want to save SRL debug to a log file (recommended)?', 'Want to see what the script is thinking?', 'Want to see colorful boxes on SMART?', 'Output the progress report to the debug box?'];
 
     comboBoxLabels := ['Bank Preset'];
     comboBoxDefaults := ['1'];
@@ -93,7 +86,7 @@ begin
     setLength(comboBoxItems, length(comboBoxLabels));
     comboBoxItems[0] := ['1', '2'];
 
-    end;
+  end;
 end;
 
 procedure declarePlayers();
@@ -112,8 +105,8 @@ begin
 
       // booleans
       booleans[0] := strToBool(playerForm.players[i].settings[1]); // Save SRL Log
-      booleans[1] := strToBool(playerForm.players[i].settings[2]); // Paint Status
-      booleans[2] := strToBool(playerForm.players[i].settings[3]); // Output Debug
+      booleans[1] := strToBool(playerForm.players[i].settings[2]); // Debug/Paint Status
+      booleans[2] := strToBool(playerForm.players[i].settings[3]); // Debug SMART
       booleans[3] := strToBool(playerForm.players[i].settings[4]); // Debug Report
 
       case playerForm.players[i].settings[5] of                    // Bank Preset
@@ -135,7 +128,12 @@ procedure paintStatus(status: string);
 begin
   if players[currentPlayer].booleans[1] then
   begin
-    smartImage.clearArea(intToBox(chatbox.x2-320,chatbox.y2-19, chatBox.x2, chatBox.y2));
+
+    try
+      smartImage.clearArea(intToBox(chatbox.x2-320,chatbox.y2-19, chatBox.x2, chatBox.y2));
+    except
+    end;
+
     smartImage.drawText('Status: ' + status, point(chatbox.x2-320,chatbox.y2-19), smallChars, false, clRed);
   end;
 end;
@@ -230,9 +228,6 @@ end;
 (------------------------------------------------------------------------------}
 
 procedure smartReport();
-var
-  proggyImageLocation: string;
-
 begin
   profit := (((doughPrice - flourPrice) * 14) * loadsDone);
 
@@ -271,7 +266,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------)
- Function: antiban   (to be implemented)
+ Function: antiban
  Description: Significantly lowers chance of ban through reproduced human qualities
 (----------------------------------------------------------------------------------}
 
@@ -280,40 +275,53 @@ begin
 
   case(random(1000) + 1) of
 
-    1..20:
+    1..30:
     begin
       mouseOffClient(OFF_CLIENT_RANDOM);
-      if players[currentPlayer].booleans[2] then
+      if players[currentPlayer].booleans[1] then
         writeLn('Antibanning ...');
     end;
-    21..40:
+    31..50:
     begin
       sleepAndMoveMouse(1000 + random(2000));
-      if players[currentPlayer].booleans[2] then
-        writeLn('Antibanning ...');
-    end;
-    41..50:
-    begin
-      hoverSkill(SKILL_COOKING);
-      if players[currentPlayer].booleans[2] then
+      if players[currentPlayer].booleans[1] then
         writeLn('Antibanning ...');
     end;
     51..70:
     begin
-      pickUpMouse();
-      if players[currentPlayer].booleans[2] then
+      hoverSkill(SKILL_COOKING);
+      if players[currentPlayer].booleans[1] then
         writeLn('Antibanning ...');
     end;
-    71..90:
+    71..85:
+    begin
+      pickUpMouse();
+      if players[currentPlayer].booleans[1] then
+        writeLn('Antibanning ...');
+    end;
+    86..110:
     begin
       smallRandomMouse();
-      if players[currentPlayer].booleans[2] then
+      if players[currentPlayer].booleans[1] then
         writeLn('Antibanning ...');
     end;
-    91..110:
+    111..130:
     begin
       randomCameraAngle(MS_ANGLE_HIGH);
-      if players[currentPlayer].booleans[2] then
+      if players[currentPlayer].booleans[1] then
+        writeLn('Antibanning ...');
+    end;
+    131..145:
+    begin
+      mouseMovingObject();
+      if players[currentPlayer].booleans[1] then
+        writeLn('Antibanning ...');
+    end;
+    146..155:
+    begin
+      wait(randomRange(3000, 6500) + random(1000));
+      randomRClickItem();
+      if players[currentPlayer].booleans[1] then
         writeLn('Antibanning ...');
     end;
   end;
@@ -327,12 +335,15 @@ end;
 
 procedure orientPlayer();
 begin
-  if players[currentPlayer].booleans[2] then
+  if players[currentPlayer].booleans[1] then
   begin
     writeLn('Orienting player ...');
   end;
 
-  paintStatus('Orienting player ...');
+  try
+    paintStatus('Orienting player ...');
+  except
+  end;
 
   minimap.clickCompass();
   mainScreen.setAngle(MS_ANGLE_HIGH);
@@ -358,9 +369,9 @@ var
 begin
   if not gameTabs.openTab(TAB_BACKPACK) then
     exit;
-  result := findDTM(potFlourDTM, x, y, tabBackpack.getBounds());
+  result := findDTM(flourDTM, x, y, tabBackpack.getBounds());
 
-  if result and (players[currentPlayer].booleans[2]) then print('Flour found in backpack');
+  if result then print('Flour found in backpack');
 end;
 
 {------------------------------------------------------------------------------)
@@ -370,12 +381,12 @@ end;
 
 procedure walkToWell();
 begin
-  if players[currentPlayer].booleans[2] then
+  if players[currentPlayer].booleans[1] then
     writeLn('Walking to well ...');
 
   paintStatus('Walking to well ...');
 
-  if SPS.walkPath(pathWell) and isFlourBackpack then
+  if SPS.walkPath(pathWell) and (isFlourBackpack()) then
       minimap.waitPlayerMoving();
 end;
 
@@ -395,6 +406,7 @@ var
   TPA, mixTPA: TPointArray;
   ATPA: T2DPointArray;
   mix: TBox;
+  p: TPoint;
 
   // Failsafe variable
   o: integer;
@@ -402,7 +414,7 @@ var
 begin
   minimap.waitPlayerMoving();
 
-  if players[currentPlayer].booleans[2] then
+  if players[currentPlayer].booleans[1] then
     writeLn('Using flour on the well ...');
 
   paintStatus('Using flour on the well ...');
@@ -432,10 +444,12 @@ begin
   // Sorts by closest match, which should be the well
   ATPA.sortFromMidPoint(mainscreen.playerPoint);
 
-  smartImage.debugATPA(ATPA);
+  // Debug matches for the Well
+  if players[currentPlayer].booleans[2] then
+    smartImage.debugATPA(ATPA);
 
   // Clicks on the well
-  for i := 0 to high(ATPA) do
+  for i := 0 to 6 do
   begin
     mouse(middleTPA(ATPA[i]), MOUSE_MOVE);
     if isMouseOverText(['ell'], 500) then
@@ -445,18 +459,33 @@ begin
     end;
   end;
 
+  if i > 5 then
+  begin
+    if (minimap.findSymbol(p, MM_SYMBOL_BANK, minimap.getBounds())) then
+    begin
+      writeLn('Found bank symbol!');
+      mouse(p, MOUSE_LEFT);
+      wait(500 + random(500));
+      minimap.waitPlayerMoving();
+    end;
+  end;
+
+
   // Starts making dough
   if productionScreen.isOpen(5000) then
 
-  mix := intToBox(287, 328, 509, 353);
+  mix := intToBox(285, 325, 509, 353);
   mixTPA := mix.createTPA;
 
-  smartImage.debugTPA(mixTPA, false);
+  if players[currentPlayer].booleans[2] then
+    smartImage.debugTPA(mixTPA, false);
 
   mouseBox(mix, MOUSE_MOVE);
   wait(randomRange(250, 500));
   fastClick(MOUSE_LEFT);
-  smartImage.clearArea(intToBox(1, 1, 750, 395));
+
+  if players[currentPlayer].booleans[2] then
+    smartImage.clearArea(intToBox(0, 0, 750, 395));
 
 end;
 
@@ -467,7 +496,7 @@ end;
 
 procedure waitDoughing();
 begin
-  if players[currentPlayer].booleans[2] then
+  if players[currentPlayer].booleans[1] then
     writeLn('Waiting for dough to be made ...');
 
   paintStatus('Waiting for dough to be made ...');
@@ -526,28 +555,28 @@ begin
   minimap.waitPlayerMoving();
 end;
 
-{------------------------------------------------------------)
- Function: outOfFlour
- Description: Checks if there is any flour left in the bank
- Credits: The Mayor taught me this, Thanks!
-(------------------------------------------------------------}
-
-function stillHaveFlour: boolean;
-var
-  i: integer;
-  //x, y: integer;
-begin
-  i := bankScreen.getPackCountDTM(potFlourDTM);
-  if i < 1 then
-    result := false;
-
-  //result := findDTM(potFlourDTM, x, y, bankScreen.getBounds());
-end;
-
 function bankOpen(): boolean;
 begin
   if bankScreen.isOpen then
     result := true;
+end;
+
+{------------------------------------------------------------)
+ Function: isFlourBank
+ Description: Checks if there is any flour left in the bank
+ Credits: The Mayor taught me this, Thanks!
+(------------------------------------------------------------}
+
+function isFlourBank(): boolean;
+var
+  x, y: integer;
+
+begin
+  if not bankOpen() then
+    exit;
+  result := findDTM(flourDTM, x, y, bankScreen.getBounds());
+
+  if result then print('Flour found in bank');
 end;
 
 procedure doBanking();
@@ -558,7 +587,7 @@ var
   failsafe: boolean;
 
 begin
-  if players[currentPlayer].booleans[2] then
+  if players[currentPlayer].booleans[1] then
     writeLn('Banking ...');
 
   paintStatus('Banking ...');
@@ -570,7 +599,7 @@ begin
   // Find banker failsafe
   if length(TPA) < 1 then
   begin
-    if players[currentPlayer].booleans[2] then
+    if players[currentPlayer].booleans[1] then
     begin
       writeLn('Banker not found, trying again ...');
       paintStatus('Banker not found, trying again ...');
@@ -596,7 +625,9 @@ begin
   ATPA.sortFromMidPoint(mainscreen.playerPoint);
 
   // Draw boxes around each banker on smart
-  smartImage.debugATPA(ATPA);
+  if players[currentPlayer].booleans[2] then
+    smartImage.debugATPA(ATPA);
+
 
   // Clicks on closest banker
   for i := 0 to high(ATPA) do
@@ -638,14 +669,15 @@ begin
     end;
   end;
 
-  smartImage.clearArea(intToBox(1, 1, 750, 395));
+  if players[currentPlayer].booleans[2] then
+    smartImage.clearArea(intToBox(1, 1, 750, 395));
 
   // Uses preset 1 if the loadsToDo setting is not yet met
   if loadsDone < (players[currentPlayer].integers[0]) then
     bankScreen.clickButton(players[currentPlayer].integers[P_PRESET]);
 
   // Deposits the final inventory if the loadsToDo setting is met
-  if loadsDone >= (players[currentPlayer].integers[0]) then
+  if loadsDone >= (players[currentPlayer].integers[0]) or (not isFlourBank()) then
     bankScreen.quickDeposit(QUICK_DEPOSIT_INVENTORY);
 
 end;
@@ -678,7 +710,7 @@ procedure terminate();
 begin
   writeLn('');
   freeTheDTMs();
-  writeLn('Terminating ...');
+  debugReport();
 end;
 
 procedure mainLoop();
@@ -705,16 +737,18 @@ begin
     smartImage.clearArea(IntToBox(4, 426, 572, 577));
     smartImage.drawBitmap(PaintBitmap, (point(4,426)));
     overallReport();
-  until(not players[currentPlayer].isActive) or loadsDone >= (players[currentPlayer].integers[0]);
+  until(not players[currentPlayer].isActive) or loadsDone >= (players[currentPlayer].integers[0]) or (not isFlourBank());
 
   if loadsDone >= (players[currentPlayer].integers[0]) then
     writeLn('Load goal completed, exiting out to lobby ...');
+
+  if (not isFlourBank()) then
+    writeLn('Ran out of flour, exiting out to lobby ...');
 
   paintStatus('Load goal completed, exiting out to lobby ...');
   debugReport();
 
   players[currentPlayer].exitToLobby();
-  //smartImage.clearArea(IntToBox(4, 426, 572, 577));
 
 end;
 

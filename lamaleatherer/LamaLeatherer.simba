@@ -4,7 +4,7 @@ program LamaLeatherer;
   {$i srl-6/lib/misc/srlplayerform.simba}
 
 {              SETUP              }
-///////////////////////////////////
+///////////////////////////////////          // Update success
 {          1. Hit RUN             }
 {          2. Fill out Form       }
 {          3. Start Script        }
@@ -12,7 +12,7 @@ program LamaLeatherer;
 const
 { Script Info }
   SCRIPT  = 'LamaLeatherer  v';
-  VERSION = '1.0';
+  VERSION = 1.1;
 
 { Player Form }
   P_PRESET      = 1;
@@ -308,8 +308,8 @@ begin
   else
     loadsString := (' (' + groupDigits(players[currentPlayer].integers[P_LOADS_TO_DO], ',') + ')');
 
-  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
-  writeLn(padR('|          ' + SCRIPT + VERSION, 40) + '|');
+  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');  // Debug Proggy
+  writeLn(padR('|          ' + SCRIPT + toStr(VERSION), 40) + '|');
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
   writeLn(padR('| Tanning Hide: ' + tanningWhat, 40) + '|');
   writeLn(padR('| Time Running: ' + (msToTime(scriptTime.getTime(), TIME_ABBREV)), 40) + '|');
