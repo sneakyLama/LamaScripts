@@ -87,7 +87,7 @@ begin
   begin
     writeLn(' ---> Downloading the newer version from Github');
     latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamasMakeLeatherer.simba');
-    newFileName := scriptPath + 'The Mayors GAO v'+ toStr(onlineVersion) +'.simba';
+    newFileName := scriptPath + 'LamasMakeLeatherer v'+ toStr(onlineVersion) +'.simba';
     newFile := rewriteFile(newFileName, true);
 
     if not writeFileString(newFile, latestScript) then
