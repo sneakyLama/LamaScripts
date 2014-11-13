@@ -4,7 +4,7 @@ program LamaLeatherer;
   {$i srl-6/lib/misc/srlplayerform.simba}
 
 {              SETUP              }
-///////////////////////////////////          // Update success
+///////////////////////////////////
 {          1. Hit RUN             }
 {          2. Fill out Form       }
 {          3. Start Script        }
@@ -86,8 +86,8 @@ begin
   if onlineVersion > VERSION then
   begin
     writeLn(' ---> Downloading the newer version from Github');
-    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamaLeatherer.simba');
-    newFileName := scriptPath + 'LamasMakeLeatherer v'+ toStr(onlineVersion) +'.simba';
+    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamasMakeLeatherer.simba');
+    newFileName := scriptPath + 'The Mayors GAO v'+ toStr(onlineVersion) +'.simba';
     newFile := rewriteFile(newFileName, true);
 
     if not writeFileString(newFile, latestScript) then
