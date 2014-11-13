@@ -16,8 +16,7 @@ const
 // Global Variables
 
 var
-  loadsDone, profitPerHour, profitMade: integer;
-  herbPrice, vialPrice, potPrice, finPrice: integer;
+  loadsDone: integer;
   waterDTM: integer;
   bankBox: TBox;
 
@@ -25,7 +24,7 @@ procedure initPlayerForm();
 begin
   with playerForm do
   begin
-    name := 'Lama''s Lantadymer'; // the title of the SPF, usually the name of your script
+    name := 'Lama''s Herber'; // the title of the SPF, usually the name of your script
     scriptHelpThread := '';    // a link to a help thread, if set to '' will link to my setup guide
 
     editBoxLabels := ['Loads to Do', 'World'];     // edit boxes are created for each array element
@@ -85,7 +84,7 @@ begin
   freeDTM(waterDTM);
 end;
 
-function getGEPrice(itemString: String): Integer;
+function getGEPrice(itemString: String): integer;  // Currently Unused...
 var
   wikiaPage, priceString: string;
 
@@ -96,29 +95,17 @@ begin
   writeLn('-- ' + itemString + ' price: ' + toStr(result));
 end;
 
-{------------------------------------------------------------------------------)
- Function: perHour
- Description: Converts an integer to a 'per hour' amount.
- Credits: Coh3n
-(------------------------------------------------------------------------------}
-
-function perHour(amt, time: integer): integer;
+function perHour(amt, time: integer): integer;  // Credits: Coh3n
 begin
   if (amt = -1) then
   begin
     result := -1;
     exit;
   end;
-
   try
     result := round((amt * 60) / (time / 60000));
   except
   end;
-end;
-
-function profit(herbsPerInv: integer): integer;
-begin
-  result := round(((herbsPerInv * finPrice) - potPrice) * 1.125);
 end;
 
 function findNormalRandoms: boolean;  // Exits out of common randoms
@@ -272,7 +259,6 @@ begin
     disableSRLDebug:=true
   else
     disableSRLDebug:=false;
-
   loadDTM();
   addOnTerminate('freeTheDTMs');
   clearDebug();
@@ -291,7 +277,6 @@ begin
   mainScreen.setAngle(MS_ANGLE_HIGH);
   findNormalRandoms();
 
-  profitMade := 0;
   loadsDone := 0;
   bankBox := [309, 180, 330, 205];
 

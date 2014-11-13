@@ -3,17 +3,22 @@ program LamaLeatherer;
   {$i srl-6/srl.simba}
   {$i srl-6/lib/misc/srlplayerform.simba}
 
+{              SETUP              }
+///////////////////////////////////
+{          1. Hit RUN             }
+{          2. Fill out Form       }
+{          3. Start Script        }
+
 const
 { Script Info }
-  SCRIPT  = 'LamaLeatherer v';
+  SCRIPT  = 'LamaLeatherer  v';
   VERSION = '1.0';
 
 { Player Form }
   P_PRESET      = 1;
   P_LOADS_TO_DO = 0;
   P_HOTK_MAKE   = '7';
-  P_HIDE        = 0;
-  P_BANK_DIR    = 0;
+  P_BANK_DIR    = 1;
 
 { Hides }
   HIDE_ROYAL = 0;
@@ -36,60 +41,47 @@ const
   W_LEATHER_BLUE  = 'Blue_dragon_leather';
   W_LEATHER_GREEN = 'Green_dragon_leather';
 
+{ Bank Points }  // Credit: Coh3n
+  BANK_NORTH: TPoint = [275, 155];
+  BANK_EAST : TPoint = [315, 185];
+  BANK_SOUTH: TPoint = [285, 215];
+  BANK_WEST : TPoint = [245, 185];
+
 { Other }
   XP_INV = 435;
 
-{ Bank Boxes }
-  BANK_EAST  = 0;
-  BANK_SOUTH = 1;
-  BANK_WEST  = 2;
-  BANK_NORTH = 3;
-
 var
-  loadsDone, xpGained, xpPerHour: integer;
+  loadsDone, xpGained, xpPerHour, hideChoiceInt, paintBitmap, greenBitmap, blueBitmap, redBitmap, blackBitmap, royalBitmap: integer;
   hidePrice, leatherPrice, castPrice, castProfit, profitPerHour, profitMade, profitTotal: integer;
-  leatherChoice: string;
   scriptTime, proggyTime: TTimeMarker;
   bankBox: TBox;
-
-function strToHide(s: string): integer;
-begin
-  case s of
-    'Royal': result := HIDE_ROYAL;
-    'Black': result := HIDE_BLACK;
-    'Red': result := HIDE_RED;
-    'Blue': result := HIDE_BLUE;
-    'Green': result := HIDE_GREEN;
-  else
-    writeln('Invalid hide selection!');
-  end;
-end;
+  outOfStuff: boolean;
+  tanningWhat: string;
 
 procedure initPlayerForm();
 begin
   with playerForm do
   begin
     name := 'Lama''s Leather Maker'; // the title of the SPF, usually the name of your script
-    scriptHelpThread := '';    // a link to a help thread, if set to '' will link to my setup guide
+    scriptHelpThread := 'https://villavu.com/forum/showthread.php?t=110893&p=1317511#post1317511';    // a link to a help thread, if set to '' will link to my setup guide
 
     editBoxLabels := ['Loads to Do', 'World', 'Action Bar Hotkey'];     // edit boxes are created for each array element
     editBoxDefaults := ['0', '0', '7'];             // optional default values for each edit box; array length must equal editBoxLabel length
 
-    editBoxHints := ['How many inventories of leather to make?', 'What world to log on to? (Leave at 0 for random)', 'Action Bar hotkey bind for make leather spell?'];
+    editBoxHints := ['How many inventories to do? Leave at 0 to go for as long as possible.', 'What world to log on to? (Leave at 0 for random)', 'Action Bar hotkey bind for make leather spell?'];
 
-    checkBoxLabels := ['Text Progress Report', 'Debug SRL', 'Debug SMART']; // same as editBoxLabels but for check boxes
-    checkBoxDefaults := ['true', 'false', 'false'];
+    checkBoxLabels := ['SMART Progress', 'Debug SRL', 'Debug SMART']; // same as editBoxLabels but for check boxes
+    checkBoxDefaults := ['false', 'false', 'false'];
     checkBoxHints := ['Output the progress report to the debug box?', 'Debug SRL stuff?', 'Want to see colorful boxes on SMART?'];
 
-    comboBoxLabels := ['Bank Preset', 'Hide Type', 'Bank Direction'];
-    comboBoxDefaults := ['1', 'Royal', 'North'];
-    comboBoxHints := ['Use which of your bank presets?', 'Which type of hide will you be working with?', 'Which direction is the bank from your character?'];
+    comboBoxLabels := ['Bank Preset', 'Bank Direction'];
+    comboBoxDefaults := ['1', 'East'];
+    comboBoxHints := ['Use which of your bank presets?', 'In relation to the player, which direction is the bank?'];
 
     // this needs to be done for every element in the comboBoxLabels array
     setLength(comboBoxItems, length(comboBoxLabels));
     comboBoxItems[0] := ['1', '2'];
-    comboBoxItems[1] := ['Royal', 'Black', 'Red', 'Blue', 'Green'];
-    comboBoxItems[2] := ['North', 'East', 'South', 'West'];
+    comboBoxItems[1] := ['N', 'E', 'S', 'W'];
 
   end;
 end;
@@ -106,11 +98,13 @@ begin
     begin
       // convert the integers
       integers[P_LOADS_TO_DO] := strToInt(playerForm.players[i].settings[0]);  // Loads to Do
-      world := strToInt(playerForm.players[i].settings[1]);
-      strings[P_HOTK_MAKE] := playerForm.players[i].settings[2];
+      world := strToInt(playerForm.players[i].settings[1]);                    // World to play on
+
+      strings[P_HOTK_MAKE] := playerForm.players[i].settings[2];   // Spell Actionbar Hotkey
+      strings[P_BANK_DIR] := playerForm.players[i].settings[7];    // Bank Direction
 
       // booleans
-      booleans[0] := strToBool(playerForm.players[i].settings[3]); // Proggy on?
+      booleans[0] := strToBool(playerForm.players[i].settings[3]); // smart Proggy
       booleans[1] := strToBool(playerForm.players[i].settings[4]); // Debug SRL
       booleans[2] := strToBool(playerForm.players[i].settings[5]); // Debug SMART
 
@@ -118,29 +112,12 @@ begin
         '1': integers[P_PRESET] := BANK_BUTTON_PRESET_1;
         '2': integers[P_PRESET] := BANK_BUTTON_PRESET_2;
       end;
-
-      integers[P_HIDE] := strToHide(playerForm.players[i].settings[7]); // Which Hide to use
-
-      case playerForm.players[i].settings[9] of                    // Bank Direction
-        'North': integers[P_BANK_DIR] := BANK_NORTH;
-        'East': integers[P_BANK_DIR] := BANK_EAST;
-        'South': integers[P_BANK_DIR] := BANK_SOUTH;
-        'West': integers[P_BANK_DIR] := BANK_WEST;
-      end;
-
     end;
 end;
 
-{------------------------------------------------------------------------------)
- Function: getGEPrice
- Description: Finds the price of an item off the wiki.
- Credits: The Mayor
-(------------------------------------------------------------------------------}
-
-function getGEPrice(itemString: String): Integer;
+function getGEPrice(itemString: string): integer;  // Credit: TheMayor
 var
   wikiaPage, priceString: string;
-
 begin
   wikiaPage := getPage('http://runescape.wikia.com/wiki/Exchange:' + itemString);
   priceString := between('GEPrice">', '</span>', wikiaPage);
@@ -148,13 +125,7 @@ begin
   writeLn('-- ' + itemString + ' price: ' + toStr(result));
 end;
 
-{------------------------------------------------------------------------------)
- Function: perHour
- Description: Converts an integer to a 'per hour' amount.
- Credits: Coh3n
-(------------------------------------------------------------------------------}
-
-function perHour(amt, time: integer): integer;
+function perHour(amt, time: integer): integer;  // Credit: Coh3n
 begin
   if (amt = -1) then
   begin
@@ -168,78 +139,19 @@ begin
   end;
 end;
 
-function setBankBox(dir: integer): TBox;
-var
-  direction: string;
+function getBankPoint(bankDir: string): TPoint;  // Credit: Coh3n
 begin
-  case dir of
-    BANK_EAST:
-    begin
-      result := [309, 174, 342, 205];
-      direction := 'East';
-    end;
-    BANK_SOUTH:
-    begin
-      result := [274, 213, 298, 234];
-      direction := 'South';
-    end;
-    BANK_WEST:
-    begin
-      result := [249, 179, 270, 206];
-      direction := 'West';
-    end;
-    BANK_NORTH:
-    begin
-      result := [275, 161, 300, 181];
-      direction := 'North';
-    end;
+  case lowerCase(bankDir) of
+    'n': result := BANK_NORTH;
+    'e': result := BANK_EAST;
+    's': result := BANK_SOUTH;
+    'w': result := BANK_WEST;
+  else
+    writeln('getBankPoint(): ERROR; invalid bank direction for player: ', currentPlayer);
   end;
-
-  writeLn('Bank is: ' + direction);
 end;
 
-function setHideInfo(hide: integer): string;
-begin
-  if hide = HIDE_ROYAL then
-  begin
-    leatherChoice := 'Royal Dragonhide';
-    hidePrice := getGEPrice(W_HIDE_ROYAL);
-    leatherPrice := getGEPrice(W_LEATHER_ROYAL);
-  end
-  else if hide = HIDE_BLACK then
-  begin
-    leatherChoice := 'Black Dragonhide';
-    hidePrice := getGEPrice(W_HIDE_BLACK);
-    leatherPrice := getGEPrice(W_LEATHER_BLACK);
-  end
-  else if hide = HIDE_RED then
-  begin
-    leatherChoice := 'Red Dragonhide';
-    hidePrice := getGEPrice(W_HIDE_RED);
-    leatherPrice := getGEPrice(W_LEATHER_RED);
-  end
-  else if hide = HIDE_BLUE then
-  begin
-    leatherChoice := 'Blue Dragonhide';
-    hidePrice := getGEPrice(W_HIDE_BLUE);
-    leatherPrice := getGEPrice(W_LEATHER_BLUE);
-  end
-  else if hide = HIDE_GREEN then
-  begin
-    leatherChoice := 'Green Dragonhide';
-    hidePrice := getGEPrice(W_HIDE_GREEN);
-    leatherPrice := getGEPrice(W_LEATHER_GREEN);
-  end else
-  begin
-    writeLn('Invalid hide choice ...');
-    terminateScript;
-  end;
-
-  result := 'Using ' + leatherChoice;
-  writeLn(result);
-end;
-
-function findNormalRandoms: boolean;  // Exits out of common randoms
+function findNormalRandoms: boolean;
 begin
   result := exitSquealOfFortune or claimSpinTicket;
 end;
@@ -273,90 +185,169 @@ var
   ATPA: T2DPointArray;
   i: integer;
 begin
-  mouseBox(bankBox, MOUSE_MOVE);
+  mouse(getBankPoint(players[currentPlayer].strings[P_BANK_DIR]).rand(15), MOUSE_MOVE);
   if isMouseOverText(['ank', 'hest']) then
     fastClick(MOUSE_LEFT);
-  wait(random(300) + 400);
   if bankScreen.isOpen(1000) or pinScreen.isOpen(1000) then
   begin
     if pinScreen.isOpen() then
       pinScreen.enter(players[currentPlayer].bankPin);
     wait(randomRange(500, 750));
     bankScreen.clickButton(players[currentPlayer].integers[P_PRESET]);
-    if not bankScreen.isOpen(1000) then
   end;
+  if not bankScreen.isOpen(1000) then
+end;
+
+function colorCheck(): boolean; // Temporary (hopefully) workaround for productionScreen.isOpen(1500)
+var
+  checkBox: TBox;
+  checkBoxTPA: TPointArray;
+begin
+  checkBox := [492, 196, 508, 266];
+  checkBoxTPA := checkBox.createTPA();
+  if playerForm.players[currentPlayer].booleans[2] then
+    smartImage.debugTPA(checkBoxTPA, true);
+  result := checkBox.colorExists(4381026, 71)  // Looks for the green check marks next to spell requirements
+end;
+
+function isRunes(): boolean;
+begin
+  result := tabBackpack.isItemInSlot(1) and tabBackpack.isItemInSlot(2);
 end;
 
 procedure makeLeather();
 var
   astralCount, bodyCount: integer;
 begin
-  if (tabBackpack.count() < 27) then
+  if bankScreen.isOpen(250) then  // Failsafe that shouldn't be necessary... can't find problem yet
   begin
-    astralCount := getItemAmount(tabBackpack.getSlotBox(1));
-    if astralCount < 2 then
-    begin
-      writeLn('No Astrals left ...');
-      players[currentPlayer].exitToLobby();
-      terminateScript();;
-    end;
-    bodyCount := getItemAmount(tabBackpack.getSlotBox(2));
-    if bodyCount < 2 then
-    begin
-      writeLn('No Bodys left ...');
-      players[currentPlayer].exitToLobby();
-      terminateScript();
-    end;
-
-    typeSend(P_HOTK_MAKE, false);
-    tabBackpack.mouseSlot(3, MOUSE_MOVE);
-    if isMouseOverText(['ragonhi', 'hide']) then
-      fastClick(MOUSE_LEFT);
-
-    if productionScreen.isOpen(1500) then
-    begin
-      productionScreen.clickStart();
-      antiban();
-      wait(randomRange(8000, 12500));
-      writeLn('Out of materials ... exiting to lobby');
-      players[currentPlayer].exitToLobby();
-      terminateScript();
-    end;
+    bankScreen.clickButton(players[currentPlayer].integers[P_PRESET]);
+    if not bankScreen.isOpen(1000) then
   end;
-
-  typeSend(P_HOTK_MAKE, false);
-  tabBackpack.mouseSlot(3, MOUSE_MOVE);
+  if (tabBackpack.count < 27) or (not isRunes()) then
+  begin
+    outOfStuff := true;
+  end;
+  tabBackpack.mouseSlot(randomRange(3, 5), MOUSE_MOVE);
   if isMouseOverText(['ragonhi', 'hide']) then
-    fastClick(MOUSE_LEFT);
-
-  if productionScreen.isOpen(1500) then
   begin
-    productionScreen.clickStart();
-    antiban();
-    tabBackpack.waitSlotPixelChange(27, 17500)
+    typeSend(players[currentPlayer].strings[P_HOTK_MAKE], false);
+    fastClick(MOUSE_LEFT);
   end;
+  waitFunc(@colorCheck, 50, 3000); // Temp workaround, see line 196
+  productionScreen.clickStart();
+  antiban();
+  if outOfStuff then
+    wait(randomRange(9000, 11000))
+  else
+    tabBackpack.waitSlotPixelChange(27, 12500);
+  wait(randomRange(1950, 2200));
 end;
 
-procedure proggy();
+procedure decideHide(); // Could probably throw this stuff into a Type List thingy, gotta learn that soon
 begin
-  if proggyTime.getTime() < 25000 then
+  bank();
+  tabBackpack.mouseSlot(3, MOUSE_MOVE);
+  if isMouseOverText(['ragonhi', 'hide']) then
+  begin
+    if isMouseOverText(['reen']) then
+      begin
+        hidePrice := getGEPrice(W_HIDE_GREEN);
+        leatherPrice := getGEPrice(W_LEATHER_GREEN);
+        hideChoiceInt := 0;
+        tanningWhat := 'Green Dragonhide';
+      end;
+    if isMouseOverText(['lue']) then
+      begin
+        hidePrice := getGEPrice(W_HIDE_BLUE);
+        leatherPrice := getGEPrice(W_LEATHER_BLUE);
+        hideChoiceInt := 1;
+        tanningWhat := 'Blue Dragonhide';
+      end;
+    if isMouseOverText(['ed']) then
+      begin
+        hidePrice := getGEPrice(W_HIDE_RED);
+        leatherPrice := getGEPrice(W_LEATHER_RED);
+        hideChoiceInt := 2;
+        tanningWhat := 'Red Dragonhide';
+      end;
+    if isMouseOverText(['lack']) then
+      begin
+        hidePrice := getGEPrice(W_HIDE_BLACK);
+        leatherPrice := getGEPrice(W_LEATHER_BLACK);
+        hideChoiceInt := 3;
+        tanningWhat := 'Black Dragonhide';
+      end;
+    if isMouseOverText(['oyal']) then
+      begin
+        hidePrice := getGEPrice(W_HIDE_ROYAL);
+        leatherPrice := getGEPrice(W_LEATHER_ROYAL);
+        hideChoiceInt := 4;
+        tanningWhat := 'Royal Dragonhide';
+      end;
+  end;
+  castPrice := (hidePrice * 5) + (getGEPrice('Astral_rune') * 2) + (getGEPrice('Body_rune') * 2);
+  castProfit := (leatherPrice * 5) - castPrice;
+  writeLn('-- Using ' + tanningWhat);
+end;
+
+
+procedure proggy();
+var
+  loadsString: string;
+begin
+  if proggyTime.getTime() < 20000 then
     exit;
   clearDebug();
 
-  xpGained := xpGained + (loadsDone * XP_INV);
+  xpGained := loadsDone * XP_INV;
   profitMade := castProfit * 5;
-  profitTotal := (profitMade * 5) * loadsDone;
+  profitTotal := profitMade * loadsDone;
+  if players[currentPlayer].integers[P_LOADS_TO_DO] < 1 then
+    loadsString := (' (' + groupDigits(perHour(loadsDone * 25, scriptTime.getTime()), ',') + ')')
+  else
+    loadsString := (' (' + groupDigits(players[currentPlayer].integers[P_LOADS_TO_DO], ',') + ')');
 
-  writeLn('|=====================================|');
-  writeLn('         ' + SCRIPT + VERSION + '         ');
-  writeLn('                                      ');
-  writeLn('  Time Running: ' + (msToTime(scriptTime.getTime(), TIME_ABBREV)));
-  writeLn('  Loads Done  : ' + toStr(loadsDone) + '/' + (toStr(playerForm.players[currentPlayer].settings[0])) + ' loads');
-  writeLn('  Profit Made : ' + toStr(profitTotal) + ' (' + toStr(perHour(profitTotal, scriptTime.getTime())) + ' )');
-  writeLn('  XP Gained   : ' + toStr(xpGained) + ' (' + toStr(perHour(xpGained, scriptTime.getTime())) + ' )');
-  writeLn('                                       ');
-  writeLn('|=====================================|');
+  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
+  writeLn(padR('|          ' + SCRIPT + VERSION, 40) + '|');
+  writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
+  writeLn(padR('| Tanning Hide: ' + tanningWhat, 40) + '|');
+  writeLn(padR('| Time Running: ' + (msToTime(scriptTime.getTime(), TIME_ABBREV)), 40) + '|');
+  writeLn(padR('| Loads Done  : ' + toStr(loadsDone) + loadsString + ' loads', 40) + '|');
+  writeLn(padR('| Profit Made : ' + groupDigits(profitTotal, ',') + ' (' + groupDigits(perHour(profitTotal, scriptTime.getTime()), ',') + ' hr)', 40) + '|');
+  writeLn(padR('| XP Gained   : ' + groupDigits(xpGained, ',') + ' (' + groupDigits(perHour(xpGained, scriptTime.getTime()), ',') + ' hr)', 40) + '|');
+  writeLn('|_______________________________________|');
+
+  if players[currentPlayer].booleans[0] then // Smart Proggy
+  begin
+    case hideChoiceInt of
+      0: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherGreen.png');
+      1: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherBlue.png');
+      2: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherRed.png');
+      3: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherBlack.png');
+      4: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherRoyal.png');
+    end;
+    smartImage.drawBitmap(PaintBitmap, (point(4, 425)));
+    smartImage.drawText((msToTime(scriptTime.getTime(), TIME_ABBREV)), Point(413, 441), UpCharsEx, false, clWhite); // Draw time running
+    smartImage.drawText(groupDigits(loadsDone * 25, ',') + ' Tanned' + ' (' + groupDigits(loadsDone, ',') + ' loads)', Point(413, 480), UpCharsEx, false, 1268443); // Draw how many loads completed
+    smartImage.drawText(groupDigits(profitTotal, ',') + ' (' + (groupDigits(perHour(profitTotal, scriptTime.getTime()), ',')) + ' hr)', Point(413, 519), UpCharsEx, false, clYellow);
+  end
   proggyTime.start();
+end;
+
+function completedTask(): boolean;
+var
+  count: integer;
+begin
+  count := 0;
+  if players[currentPlayer].integers[P_LOADS_TO_DO] < 1 then
+    count := 1
+  else
+    count := 0;
+  if count > 0 then
+    result := outOfStuff
+  else
+    result := loadsDone >= players[currentPlayer].integers[P_LOADS_TO_DO];
 end;
 
 procedure setup();
@@ -367,22 +358,18 @@ begin
   smartEnableDrawing := true;
   initPlayerForm();
   runPlayerForm();
+  if (not playerForm.isScriptReady) then
+    terminatescript;
   declarePlayers();
   if (players[currentPlayer].booleans[2]) then
     smartShowConsole := true
   else
     smartShowConsole := false;
-  if (not playerForm.isScriptReady) then
-    terminatescript;
   setupSRL();
   if not players[currentPlayer].booleans[1] then
     disableSRLDebug:=true
   else
     disableSRLDebug:=false;
-  setHideInfo(P_HIDE);
-  bankBox := setBankBox(P_BANK_DIR);
-  castPrice := (hidePrice * 5) + (getGEPrice('Astral_rune') * 2) + (getGEPrice('Body_rune') * 2);
-  castProfit := (leatherPrice * 5) - castPrice;
   clearDebug();
 end;
 
@@ -393,7 +380,7 @@ begin
     if not players[currentPlayer].login() then
       terminateScript;
     writeln('Just logged in... waiting a moment');
-    wait(RandomRange(2000, 6500));
+    wait(RandomRange(2000, 4750));
   end;
   minimap.clickCompass();
   mainScreen.setAngle(MS_ANGLE_HIGH);
@@ -405,17 +392,20 @@ begin
 
   scriptTime.start();
   repeat
-    bank();
+    if loadsDone <= 0 then
+      decideHide()
+    else
+      bank();
     makeLeather();
     loadsDone := loadsDone + 1;
-    if players[currentPlayer].booleans[1] then
-      proggy();
-  until loadsDone >= (players[currentPlayer].integers[P_LOADS_TO_DO]);
+    proggy();
+  until completedTask() or ((loadsDone <= players[currentPlayer].integers[P_LOADS_TO_DO]) and outOfStuff);
 
   writeLn('Load target met ...');
   proggy();
   writeLn('Exiting to lobby ...');
   players[currentPlayer].exitToLobby();
+  proggy();
 end;
 
 begin
