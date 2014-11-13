@@ -80,14 +80,14 @@ var
   onlineVersion: extended;
 begin
   writeln('Checking for script updates:');
-  onlineVersion := strToFloat(getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleather/version.txt'));
+  onlineVersion := strToFloat(getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/version.txt'));
   writeLn(' ---> Script version: ' + toStr(VERSION) + ' | Online version: ' + toStr(onlineVersion));
 
   if onlineVersion > VERSION then
   begin
     writeLn(' ---> Downloading the newer version from Github');
-    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleather/LamaLeatherer.simba');
-    newFileName := scriptPath + 'The Mayors GAO v'+ toStr(onlineVersion) +'.simba';
+    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamaLeatherer.simba');
+    newFileName := scriptPath + 'LamasMakeLeatherer v'+ toStr(onlineVersion) +'.simba';
     newFile := rewriteFile(newFileName, true);
 
     if not writeFileString(newFile, latestScript) then
