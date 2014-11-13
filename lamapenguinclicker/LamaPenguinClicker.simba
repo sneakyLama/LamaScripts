@@ -238,7 +238,7 @@ begin
       wait(randomRange(1000, 2250));
       tabBackpack.open();
     end;
-    1:  // Simulates checking how many mySpace followers you have now
+    1:  // Simulates checking how many MySpace followers you have now :)
     begin
       cleanUpPenguins();
       mouseOffClient(OFF_CLIENT_RANDOM);
