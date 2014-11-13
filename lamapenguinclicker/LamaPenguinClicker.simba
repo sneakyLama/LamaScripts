@@ -3,14 +3,97 @@ program LamaClockworkAgility;
   {$I SRL-6/SRL.Simba}
   {$i SRL-6/lib/misc/srlplayerform.simba}
 
+{              SETUP              }
+///////////////////////////////////
+{          1. Hit RUN             }
+{          2. Fill out Form       }
+{          3. Start Script        }
+
 const
   SCRIPT = 'Lama''s Penguin Clicker';
-  VERSION = ' v1.0';
+  VERSION = 1.1;
 var
   xpStart, xpCurrent, xpGained, xpPerHour, timeLeft, breakTime, paintBitmap, z, dumbInt: integer;
   break, debugSRL, debugSMART, paintProggy: boolean;
   progTime, scriptTime: TTimeMarker;
   windHotK, releaseHotK: string;
+
+//By Olly
+function GetGithubPage(const URL: String): String;
+var
+  NewURL: String;
+  p: Integer;
+begin
+  Result := '';
+  p := Pos('.com/', URL);
+  if (p = 0) then
+    Exit;
+
+  NewURL := Copy(URL, p + Length('.com/'), Length(URL) - p + Length('.com/'));
+  Result := GetPage('http://cdn.rawgit.com/' +  Replace(NewURL, 'blob/', '', [rfReplaceAll]));
+end;
+
+procedure checkForUpdates(); // Credits: The Mayor
+var
+  newFile: integer;
+  latestScript, newFileName: string;
+  onlineVersion: extended;
+begin
+  writeln('Checking for script updates:');
+  onlineVersion := strToFloat(getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamapenguinclicker/version.txt'));
+  writeLn(' ---> Script version: ' + toStr(VERSION) + ' | Online version: ' + toStr(onlineVersion));
+
+  if onlineVersion > VERSION then
+  begin
+    writeLn(' ---> Downloading the newer version from Github');
+    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamapenguinclicker/LamaPenguinClicker.simba');
+    newFileName := scriptPath + 'LamasPenguinClicker v'+ toStr(onlineVersion) +'.simba';
+    newFile := rewriteFile(newFileName, true);
+
+    if not writeFileString(newFile, latestScript) then
+    begin
+      writeLn(' ---> Fatal error writing to ' + newFileName);
+      terminatescript();
+    end;
+
+    closeFile(newFile);
+    writeLn(' ---> New script downloaded to ' + newFileName);
+    writeLn(' ---> Please use the new one instead!');
+    writeLn('');
+    terminateScript();
+  end else
+    writeLn(' ---> You have the latest revision.');
+
+  writeLn('');
+end;
+
+procedure checkForImages(path, link, item: string); // Credits: Kevin, The Mayor
+var
+  progFile: longInt;
+  picName: string;
+
+begin
+  picName := AppPath + path;
+
+  try
+    if not fileExists(picName) then
+    begin
+      writeLn('NOTIFICATION: ' + item + ' does not exist - Downloading it now!.');
+      progFile := createFile(picName);
+    end else
+      exit;
+
+    closeFile(progFile);
+
+    progFile := rewriteFile(picName, false);
+    writeFileString(progFile, getPage(link));
+    writeLn('NOTIFICATION: ' + item + ' has been download to Simba folder!');
+    writeLn('');
+  finally
+    if (progFile > 0) then
+      closeFile(progFile);
+  end;
+end;
 
 procedure initPlayerForm(); // What is on the playerForm
 begin
@@ -56,20 +139,6 @@ begin
   result := exitSquealOfFortune or claimSpinTicket;
 end;
 
-procedure antiban();  // Some basic antiban to spice things up
-begin
-  case random(1000) of
-    0:
-    begin
-      tabStats.open();
-      mouseBox(tabStats.getSkillBox(SKILL_AGILITY), MOUSE_MOVE);
-      wait(randomRange(1000, 2250));
-      tabBackpack.open();
-    end;
-    1..10: sleepAndMoveMouse(randomRange(100, 250));
-  end;
-end;
-
 procedure doPenguinStuff();  // Winds, releases, and catches clockwork penguins
 begin
   mouseOval(randomRange(287, 292), randomRange(190, 200), 3, 4, MOUSE_LEFT);  // Moves and clicks randomly in an area around the players knees (where the penguins are)
@@ -91,7 +160,7 @@ begin
       fastClick(MOUSE_LEFT);
     end;
     11..15: fastClick(MOUSE_LEFT);
-    16..20:
+    16..21:
     begin
       typeSend(windHotK, false);
       wait(randomRange(60, 85));
@@ -104,6 +173,7 @@ begin
   fastClick(MOUSE_LEFT);
   wait(randomRange(100, 150));
   typeSend(releaseHotK, false);
+  fastClick(MOUSE_LEFT);
 end;
 
 function penguinsLeft(): boolean;  // Checks if there are penguins to pick up before breaking/ending
@@ -148,6 +218,36 @@ begin
   end;
 end;
 
+procedure cleanUpPenguins();
+begin
+  for z := 0 to 2 do // <-- Stupid Failsafe
+    repeat
+      writeLn('Checking for penguins [' + toStr(z + 1) + '/3]');
+      pickUpPenguins();
+      wait(randomRange(500, 1000));
+    until not penguinsLeft();
+end;
+
+procedure antiban();  // Some basic antiban to spice things up
+begin
+  case random(1000) of
+    0:
+    begin
+      tabStats.open();
+      mouseBox(tabStats.getSkillBox(SKILL_AGILITY), MOUSE_MOVE);
+      wait(randomRange(1000, 2250));
+      tabBackpack.open();
+    end;
+    1:  // Simulates checking how many mySpace followers you have now
+    begin
+      cleanUpPenguins();
+      mouseOffClient(OFF_CLIENT_RANDOM);
+      wait(randomRange(15000, 30000));
+    end;
+    2..10: sleepAndMoveMouse(randomRange(100, 250));
+  end;
+end;
+
 procedure progressReport();  // Outputs a progress report with useful information
 begin
   if progTime.getTime < 20000 then exit;
@@ -165,7 +265,7 @@ begin
   end;
   clearDebug();
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
-  writeLn('|            ' + SCRIPT + VERSION + '            |');
+  writeLn('|            ' + SCRIPT + toStr(VERSION) + '            |');
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
   writeLn(padR('| Time Running: ' + timeRunning, 52) + '|');
   writeLn(padR('| Approx. Time Left: ' + msToTime((timeLeft * 60000) - scriptTime.getTime(), TIME_ABBREV), 52) + '|');
@@ -183,6 +283,8 @@ begin
     smartShowConsole := true
   else
     smartShowConsole := false;
+  checkForUpdates();
+  checkForImages('Scripts\lamaPengProggy.png', 'https://i.imgur.com/s8Y2R2q.png', 'SMART Proggy');
   initPlayerForm();
   runPlayerForm();
   if (not playerForm.isScriptReady) then
@@ -213,20 +315,14 @@ begin
   timeLeft := timeLeft + scriptTime.getTime();
   while (scriptTime.getTime() < (timeLeft * randomRange(59000, 61000))) do
   begin
-    progressReport();
     doPenguinStuff();
-    fastClick(MOUSE_LEFT);
+    progressReport();
     antiban();
   end;
   scriptTime.pause();
   minimap.setAngle(MM_DIRECTION_EAST);
   mainScreen.setZoom(true);
-  for z := 0 to 2 do // <-- Stupid Failsafe
-    repeat
-      writeLn('Checking for penguins [' + toStr(z + 1) + '/3]');
-      pickUpPenguins();
-      wait(randomRange(500, 1000));
-    until not penguinsLeft();
+  cleanUpPenguins();
   wait(randomRange(1000, 2000));
   progressReport();
   players[currentPlayer].exitToLobby();
