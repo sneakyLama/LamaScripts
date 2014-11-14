@@ -51,7 +51,7 @@ const
   XP_INV = 435;
 
 var
-  loadsDone, xpGained, xpPerHour, hideChoiceInt, paintBitmap, greenBitmap, blueBitmap, redBitmap, blackBitmap, royalBitmap: integer;
+  loadsDone, xpGained, xpPerHour, hideChoiceInt, paintBitmap: integer;
   hidePrice, leatherPrice, castPrice, castProfit, profitPerHour, profitMade, profitTotal: integer;
   scriptTime, proggyTime: TTimeMarker;
   bankBox: TBox;
@@ -86,7 +86,7 @@ begin
   if onlineVersion > VERSION then
   begin
     writeLn(' ---> Downloading the newer version from Github');
-    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamasMakeLeatherer.simba');
+    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamaLeatherer.simba');
     newFileName := scriptPath + 'LamasMakeLeatherer v'+ toStr(onlineVersion) +'.simba';
     newFile := rewriteFile(newFileName, true);
 

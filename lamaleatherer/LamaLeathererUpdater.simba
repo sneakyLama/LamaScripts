@@ -1,0 +1,86 @@
+program LamasMakeLeatherer;
+
+const
+  VERSION = 0;
+
+{
+                           THIS IS JUST AN UPDATER
+             Run to get most currently up-to-date version of script!
+
+                          __                       _
+                         / /  __ _ _ __ ___   __ _( )__
+                        / /  / _` | '_ ` _ \ / _` |/ __|
+                       / /__| (_| | | | | | | (_| |\__ \
+                       \____/\__,_|_| |_| |_|\__,_||___/
+                                          _
+                              /\/\   __ _| | _____
+                             /    \ / _` | |/ / _ \
+                            / /\/\ \ (_| |   <  __/
+                            \/    \/\__,_|_|\_\___|
+                     __            _   _
+                    / /  ___  __ _| |_| |__   ___ _ __ ___ _ __
+                   / /  / _ \/ _` | __| '_ \ / _ \ '__/ _ \ '__|
+                  / /__|  __/ (_| | |_| | | |  __/ | |  __/ |
+                  \____/\___|\__,_|\__|_| |_|\___|_|  \___|_|
+                                       _       _
+                       /\ /\ _ __   __| | __ _| |_ ___ _ __
+                      / / \ \ '_ \ / _` |/ _` | __/ _ \ '__|
+                      \ \_/ / |_) | (_| | (_| | ||  __/ |
+                       \___/| .__/ \__,_|\__,_|\__\___|_|
+                            |_|
+
+}
+
+//By Olly
+function GetGithubPage(const URL: String): String;
+var
+  NewURL: String;
+  p: Integer;
+begin
+  Result := '';
+  p := Pos('.com/', URL);
+  if (p = 0) then
+    Exit;
+
+  NewURL := Copy(URL, p + Length('.com/'), Length(URL) - p + Length('.com/'));
+  Result := GetPage('http://cdn.rawgit.com/' +  Replace(NewURL, 'blob/', '', [rfReplaceAll]));
+end;
+
+procedure checkForUpdates(); // Credits: The Mayor
+var
+  newFile: integer;
+  latestScript, newFileName: string;
+  onlineVersion: extended;
+begin
+  writeln('Checking for script updates:');
+  onlineVersion := strToFloat(getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/version.txt'));
+  writeLn(' ---> Script version: ' + toStr(VERSION) + ' | Online version: ' + toStr(onlineVersion));
+
+  if onlineVersion > VERSION then
+  begin
+    writeLn(' ---> Downloading the newer version from Github');
+    latestScript := getGithubPage('https://github.com/sneakyLama/LamaScripts/blob/master/lamaleatherer/LamaLeatherer.simba');
+    newFileName := scriptPath + 'LamasMakeLeatherer v'+ toStr(onlineVersion) +'.simba';
+    newFile := rewriteFile(newFileName, true);
+
+    if not writeFileString(newFile, latestScript) then
+    begin
+      writeLn(' ---> Fatal error writing to ' + newFileName);
+      terminatescript();
+    end;
+
+    closeFile(newFile);
+    writeLn(' ---> New script downloaded to ' + newFileName);
+    writeLn(' ---> Please use the new one instead!');
+    writeLn('');
+    terminateScript();
+  end else
+    writeLn(' ---> You have the latest revision.');
+
+  writeLn('');
+end;
+
+begin
+  clearDebug();
+  checkForUpdates();
+end.
