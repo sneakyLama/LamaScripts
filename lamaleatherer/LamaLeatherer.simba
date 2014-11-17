@@ -50,13 +50,20 @@ const
 { Other }
   XP_INV = 435;
 
+type
+  THide = record
+    price, leatherPrice, hideInt: integer;
+    tanning: string;
+  end;
+
 var
-  loadsDone, xpGained, xpPerHour, hideChoiceInt, paintBitmap: integer;
-  hidePrice, leatherPrice, castPrice, castProfit, profitPerHour, profitMade, profitTotal: integer;
+  loadsDone, xpGained, xpPerHour, paintBitmap: integer;
+  castPrice, castProfit, profitPerHour, profitMade, profitTotal: integer;
   scriptTime, proggyTime: TTimeMarker;
   bankBox: TBox;
   outOfStuff: boolean;
   tanningWhat: string;
+  hide: THide;
 
 //By Olly
 function GetGithubPage(const URL: String): String;
@@ -202,7 +209,7 @@ end;
 
 function findNormalRandoms: boolean;
 begin
-  result := exitTreasure() or claimTicket();
+  result := exitSquealOfFortune or claimSpinTicket;
 end;
 
 procedure antiban();
@@ -211,18 +218,18 @@ begin
     1:
     begin
       boredHuman(true);
-      MainScreen.SetAngle(MS_ANGLE_HIGH);
+      mainScreen.SetAngle(MS_ANGLE_HIGH);
       minimap.setAngle(MM_DIRECTION_NORTH);
     end;
-    2..400:
+    2..375:
     begin
       mouseSpeed := 40;
       sleepAndMoveMouse(randomRange(100, 500));
       mouseSpeed := 20;
     end;
-    401..500:
+    376..500:
     begin
-      mouseOffClient(random(4));
+      mouseOffClient(OFF_CLIENT_RANDOM);
       wait(gaussRangeInt(0, 7500));
     end;
   end;
@@ -284,6 +291,7 @@ begin
     fastClick(MOUSE_LEFT);
   end;
   waitFunc(@colorCheck, 50, 3000); // Temp workaround, see line 196
+  wait(randomRange(100, 250));
   productionScreen.clickStart();
   antiban();
   if outOfStuff then
@@ -293,60 +301,66 @@ begin
   wait(randomRange(1950, 2200));
 end;
 
-procedure decideHide(); // Could probably throw this stuff into a Type List thingy, gotta learn that soon
+procedure decideHide();
+var
+  hideArr: TStringArray;
+  i: integer;
 begin
+  hideArr := ['reen', 'lue', 'ed', 'lack', 'oyal'];
   bank();
   tabBackpack.mouseSlot(3, MOUSE_MOVE);
-  if isMouseOverText(['ragonhi', 'hide']) then
-  begin
-    if isMouseOverText(['reen']) then
-      begin
-        hidePrice := getGEPrice(W_HIDE_GREEN);
-        leatherPrice := getGEPrice(W_LEATHER_GREEN);
-        hideChoiceInt := 0;
-        tanningWhat := 'Green Dragonhide';
-      end;
-    if isMouseOverText(['lue']) then
-      begin
-        hidePrice := getGEPrice(W_HIDE_BLUE);
-        leatherPrice := getGEPrice(W_LEATHER_BLUE);
-        hideChoiceInt := 1;
-        tanningWhat := 'Blue Dragonhide';
-      end;
-    if isMouseOverText(['ed']) then
-      begin
-        hidePrice := getGEPrice(W_HIDE_RED);
-        leatherPrice := getGEPrice(W_LEATHER_RED);
-        hideChoiceInt := 2;
-        tanningWhat := 'Red Dragonhide';
-      end;
-    if isMouseOverText(['lack']) then
-      begin
-        hidePrice := getGEPrice(W_HIDE_BLACK);
-        leatherPrice := getGEPrice(W_LEATHER_BLACK);
-        hideChoiceInt := 3;
-        tanningWhat := 'Black Dragonhide';
-      end;
-    if isMouseOverText(['oyal']) then
-      begin
-        hidePrice := getGEPrice(W_HIDE_ROYAL);
-        leatherPrice := getGEPrice(W_LEATHER_ROYAL);
-        hideChoiceInt := 4;
-        tanningWhat := 'Royal Dragonhide';
-      end;
-  end;
-  castPrice := (hidePrice * 5) + (getGEPrice('Astral_rune') * 2) + (getGEPrice('Body_rune') * 2);
-  castProfit := (leatherPrice * 5) - castPrice;
-  writeLn('-- Using ' + tanningWhat);
-end;
 
+  for i := 0 to 4 do
+    if isMouseOverText([hideArr[i]]) then
+    begin
+      hide.hideInt := i;
+      break;
+    end;
+
+  case hide.hideInt of
+    0:
+    begin
+      hide.price := getGEPrice(W_HIDE_GREEN);
+      hide.leatherPrice := getGEPrice(W_LEATHER_GREEN);
+      hide.tanning := 'Green Dragonhide';
+    end;
+    1:
+    begin
+      hide.price := getGEPrice(W_HIDE_BLUE);
+      hide.leatherPrice := getGEPrice(W_LEATHER_BLUE);
+      hide.tanning := 'Blue Dragonhide';
+    end;
+    2:
+    begin
+      hide.price := getGEPrice(W_HIDE_RED);
+      hide.leatherPrice := getGEPrice(W_LEATHER_RED);
+      hide.tanning := 'Red Dragonhide';
+    end;
+    3:
+    begin
+      hide.price := getGEPrice(W_HIDE_BLACK);
+      hide.leatherPrice := getGEPrice(W_LEATHER_BLACK);
+      hide.tanning := 'Black Dragonhide';
+    end;
+    4:
+    begin
+      hide.price := getGEPrice(W_HIDE_ROYAL);
+      hide.leatherPrice := getGEPrice(W_LEATHER_ROYAL);
+      hide.tanning := 'Royal Dragonhide';
+    end;
+  end;
+
+  castPrice := (hide.price * 5) + (getGEPrice('Astral_rune') * 2) + (getGEPrice('Body_rune') * 2);
+  castProfit := (hide.leatherPrice * 5) - castPrice;
+  writeLn('-- Using ' + hide.tanning);
+end;
 
 procedure proggy();
 var
   loadsString: string;
 begin
-  if proggyTime.getTime() < 20000 then
-    exit;
+  //if proggyTime.getTime() < 20000 then
+    //exit;
   clearDebug();
 
   xpGained := loadsDone * XP_INV;
@@ -360,7 +374,7 @@ begin
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');  // Debug Proggy
   writeLn(padR('|          ' + SCRIPT + toStr(VERSION), 40) + '|');
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
-  writeLn(padR('| Tanning Hide: ' + tanningWhat, 40) + '|');
+  writeLn(padR('| Tanning Hide: ' + hide.tanning, 40) + '|');
   writeLn(padR('| Time Running: ' + (msToTime(scriptTime.getTime(), TIME_ABBREV)), 40) + '|');
   writeLn(padR('| Loads Done  : ' + toStr(loadsDone) + loadsString + ' loads', 40) + '|');
   writeLn(padR('| Profit Made : ' + groupDigits(profitTotal, ',') + ' (' + groupDigits(perHour(profitTotal, scriptTime.getTime()), ',') + ' hr)', 40) + '|');
@@ -369,7 +383,7 @@ begin
 
   if players[currentPlayer].booleans[0] then // Smart Proggy
   begin
-    case hideChoiceInt of
+    case hide.hideInt of
       0: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherGreen.png');
       1: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherBlue.png');
       2: paintBitmap := loadBitmap(appPath + 'Scripts\LamaLeatherProgs\lamaLeatherRed.png');
@@ -380,9 +394,8 @@ begin
     smartImage.drawText((msToTime(scriptTime.getTime(), TIME_ABBREV)), Point(413, 441), UpCharsEx, false, clWhite); // Draw time running
     smartImage.drawText(groupDigits(loadsDone * 25, ',') + ' Tanned' + ' (' + groupDigits(loadsDone, ',') + ' loads)', Point(413, 480), UpCharsEx, false, 1268443); // Draw how many loads completed
     smartImage.drawText(groupDigits(profitTotal, ',') + ' (' + (groupDigits(perHour(profitTotal, scriptTime.getTime()), ',')) + ' hr)', Point(413, 519), UpCharsEx, false, clYellow);
-    smartImage.drawText('Version: ' + toStr(VERSION), Point(255, 555), UpCharsEx, false, clGray);
-  end;
-  proggyTime.start();
+  end
+  //proggyTime.start();
 end;
 
 function completedTask(): boolean;
@@ -464,4 +477,5 @@ end;
 begin
   setup();
   mainLoop();
+  freeBitmaps([paintBitmap]);
 end.

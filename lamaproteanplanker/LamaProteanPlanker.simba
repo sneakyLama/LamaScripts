@@ -100,7 +100,7 @@ begin
   with playerForm do
   begin
     name := 'Lama''s Protean Planker'; // the title of the SPF, usually the name of your script
-    scriptHelpThread := '';    // a link to a help thread, if set to '' will link to my setup guide
+    scriptHelpThread := 'https://villavu.com/forum/showthread.php?t=110955&p=1318236#post1318236';    // a link to a help thread, if set to '' will link to my setup guide
 
     editBoxLabels := ['Run Time', 'World'];
     editBoxDefaults := ['180', '0'];
