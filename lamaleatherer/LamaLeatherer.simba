@@ -202,7 +202,7 @@ end;
 
 function findNormalRandoms: boolean;
 begin
-  result := exitSquealOfFortune or claimSpinTicket;
+  result := exitTreasure() or claimTicket();
 end;
 
 procedure antiban();
@@ -380,7 +380,8 @@ begin
     smartImage.drawText((msToTime(scriptTime.getTime(), TIME_ABBREV)), Point(413, 441), UpCharsEx, false, clWhite); // Draw time running
     smartImage.drawText(groupDigits(loadsDone * 25, ',') + ' Tanned' + ' (' + groupDigits(loadsDone, ',') + ' loads)', Point(413, 480), UpCharsEx, false, 1268443); // Draw how many loads completed
     smartImage.drawText(groupDigits(profitTotal, ',') + ' (' + (groupDigits(perHour(profitTotal, scriptTime.getTime()), ',')) + ' hr)', Point(413, 519), UpCharsEx, false, clYellow);
-  end
+    smartImage.drawText('Version: ' + toStr(VERSION), Point(255, 555), UpCharsEx, false, clGray);
+  end;
   proggyTime.start();
 end;
 
@@ -451,11 +452,13 @@ begin
     proggy();
   until completedTask() or ((loadsDone <= players[currentPlayer].integers[P_LOADS_TO_DO]) and outOfStuff);
 
-  writeLn('Load target met ...');
+  if outOfStuff then
+    writeLn('Ran out of materials ...')
+  else
+    writeLn('Completed task ...');
   proggy();
   writeLn('Exiting to lobby ...');
   players[currentPlayer].exitToLobby();
-  proggy();
 end;
 
 begin

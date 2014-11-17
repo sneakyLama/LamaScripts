@@ -5,18 +5,17 @@ program ProteanPlanker;
 
 const
 { Script Info }
-  SCRIPT  = 'LamaProteanPlanker  v';
-  VERSION = 1.1;
+  SCRIPT  = 'LamaProteanPlanker v';
+  VERSION = 1.0;
 
 { Player Form }
   P_PRESET      = 1;
-  P_LOADS_TO_DO = 0;
 
 var
-  loadsDone, protoMade, planksMade, logCount: integer;
+  protoMade, planksMade, logCount, logTotal, plankCount: integer;
   logPrice, plankPrice, profitMade, profitTotal, profitPerHour: integer;
-  logDTM, plankDTM, paintBitmap: integer;
-  scriptTime, proggyTime: TTimeMarker;
+  logDTM, PaintBitmap, MillBitmap, PlankBitmap: integer;
+  scriptTime: TTimeMarker;
   chatOne: TBox;
 
 //By Olly
@@ -107,9 +106,17 @@ begin
     editBoxDefaults := ['180', '0'];
     editBoxHints := ['How long (in minutes) to run the script?', 'What world do you want to be on? (Leave at 0 for random)'];
 
-    checkBoxLabels := ['Paint Proggy', 'SMART Debug', 'Debug SRL']; // same as editBoxLabels but for check boxes
-    checkBoxDefaults := ['false', 'false', 'false'];
-    checkBoxHints := ['See a report for useful information on screen?', 'Debug SMART?', 'Debug SRL?'];
+    checkBoxLabels := ['Place Own Sawmills', 'Paint Proggy', 'SMART Debug', 'Debug SRL']; // same as editBoxLabels but for check boxes
+    checkBoxDefaults := ['true', 'false', 'false', 'false'];
+    checkBoxHints := ['If no sawmill present, place ones from your bank?', 'See a report for useful information on screen?', 'Debug SMART?', 'Debug SRL?'];
+
+    comboBoxLabels := ['Bank Preset'];
+    comboBoxDefaults := ['1'];
+    comboBoxHints := ['Use which of your bank presets?'];
+
+    // this needs to be done for every element in the comboBoxLabels array
+    setLength(comboBoxItems, length(comboBoxLabels));
+    comboBoxItems[0] := ['1', '2'];
   end;
 end;
 
@@ -125,9 +132,15 @@ begin
       integers[0] := strToInt(playerForm.players[i].settings[0]);  // How long to run script before ending/breaking
       world := strToInt(playerForm.players[i].settings[1]);
 
-      booleans[0] := strToBool(playerForm.players[i].settings[2]); // Paint proggy image
-      booleans[1] := strToBool(playerForm.players[i].settings[3]); // Debug SMART
-      booleans[2] := strToBool(playerForm.players[i].settings[4]); // Debug SRL
+      booleans[0] := strToBool(playerForm.players[i].settings[2]); // Place own sawmills
+      booleans[1] := strToBool(playerForm.players[i].settings[3]); // Paint proggy image
+      booleans[2] := strToBool(playerForm.players[i].settings[4]); // Debug SMART
+      booleans[3] := strToBool(playerForm.players[i].settings[5]); // Debug SRL
+
+      case playerForm.players[i].settings[6] of                    // Bank Preset
+        '1': integers[P_PRESET] := BANK_BUTTON_PRESET_1;
+        '2': integers[P_PRESET] := BANK_BUTTON_PRESET_2;
+      end;
     end;
 end;
 
@@ -155,15 +168,9 @@ begin
   end;
 end;
 
-procedure loadDTMs();
-begin
-  logDTM := DTMFromString('');;
-  plankDTM := DTMFromString('');
-end;
-
 function findNormalRandoms: boolean;  // Exits out of common randoms
 begin
-  result := exitSquealOfFortune or claimSpinTicket;
+  result := exitTreasure() or claimTicket();
 end;
 
 procedure antiban;
@@ -183,19 +190,39 @@ var
 begin
   if bankScreen.isOpen(500) then
     bankScreen.clickButton(BANK_BUTTON_PRESET_1);
-  sawBox := [249, 271, 302, 301];
-  if not sawBox.colorExists(3370399, 19) then
-  begin
-    writeLn('No sawmill found ...');
-    result := true;
-  end;
+  sawBox := [249, 271, 303, 300];
+  if not sawBox.colorExists(3237530, 26) then
+    begin
+      result := true;
+      exit;
+    end;
+  result := false;
+end;
+
+procedure countStuff();
+var
+  protoBox: TBox;
+  i: integer;
+begin
+  for i := 0 to 10 do
+    begin
+      plankCount := tabBackpack.countBitmap(PlankBitmap, 35);
+      wait(randomRange(50, 175));
+      if plankCount > 1 then
+        break;
+    end;
+  planksMade := planksMade + plankCount;
+  if plankCount > 27 then
+    exit;
+  protoBox := tabBackpack.getSlotBox(plankCount + 1);
+  smartImage.drawBox(protoBox, false, clRed);
+  protoMade := protoMade + ((28 - plankCount) * 2);
 end;
 
 procedure makePlanks();
 begin
-  if (tabBackpack.count() <= 27) then
-    exit;
   logCount := tabBackpack.countDTM(logDTM);
+  logTotal := logTotal + logCount;
   writeLn('Clicking sawmill ...');
   mouseOval(274, 286, 20, 15, MOUSE_MOVE);    // Clicks sawmill
   wait(225 + random(250));
@@ -218,8 +245,9 @@ begin
     typesend('1', false);
     antiban();
     mouseOval(378, 197, 45, 60, MOUSE_MOVE);
-    tabBackpack.waitSlotPixelChange(28, 4000);
-    wait(randomRange(250, 675));
+    tabBackpack.waitSlotPixelChange(28, 5500);
+    countStuff();
+    wait(randomRange(400, 750));
   end;
 end;
 
@@ -227,33 +255,33 @@ procedure doBanking;
 begin
   if noMill() then     // If there is not a mill placed, it will withdraw from bank slot 10 and place
   begin
-    writeLn('Going to place a new mill ...');
+    writeLn('No sawmill found, going to place another ...');
     mouseBox([358, 178, 398, 225], MOUSE_MOVE);
     if IsMouseOverText(['Shantay c', 'y chest'], 500) then
       fastclick(MOUSE_LEFT);
-    if bankScreen.isOpen(1250) or pinScreen.isOpen(1250) then
+    if _waitBankOrPinscreen(1500) then
     begin
       if pinScreen.isOpen() then
         pinScreen.enter(players[currentPlayer].bankPin);
-      mouseBox([393, 564, 420, 585], MOUSE_LEFT);
-      wait(randomRange(250, 750));
-      if not bankscreen.withdraw(10, 1, ['ortable', 'mill']) then
-      begin
-        writeLn('No extra mills left ... terminating script ...');
-        terminateScript();
-      end;
+      if bankscreen.getPackCount() >= 1 then
+        bankScreen.quickDeposit(QUICK_DEPOSIT_INVENTORY);
+      bankScreen.withdraw(MillBitmap, 50, 1);
       antiban();
-      wait(randomRange(1250, 1800));
-      bankScreen.close();
-      wait(randomRange(500, 1400));
+      if bankScreen.isItemInPackSlot(1) then
+        bankScreen.close();
+      wait(randomRange(500, 1000));
       if tabBackpack.mouseSlot(1, MOUSE_MOVE) then
       begin
         if isMouseOverText(['ortabl', 'aw', 'mill']) then
-          fastClick(MOUSE_LEFT);
+          fastClick(MOUSE_LEFT)
+        else
+          writeLn('We didn''t manage to get a sawmill out ...');
         antiban();
         if conversationBox.isOpen(1500) then
-          conversationBox.selectOption(1);
-        writeLn('New mill placed successfully ...');
+          begin
+            conversationBox.selectOption(1);
+            writeLn('New mill placed successfully ...');
+          end;
         wait(randomRange(500, 1250));
       end;
     end;
@@ -261,63 +289,54 @@ begin
 
   writeLn('Banking ...');
   mouseBox([358, 178, 398, 225], MOUSE_MOVE);    // Normal bank procedure, if mill is placed
-  if IsMouseOverText(['Shantay c', 'y chest'], 500) then
+  if isMouseOverText(['Shantay c', 'y chest'], 500) then
     fastclick(MOUSE_LEFT);
-  if bankScreen.isOpen(1250) or pinScreen.isOpen(1250) then
+  if _waitBankOrPinscreen(1500) then
   begin
     if pinScreen.isOpen() then
       pinScreen.enter(players[currentPlayer].bankPin);
-    bankScreen.clickButton(BANK_BUTTON_PRESET_1);
+    smartImage.clearArea([576, 321, 795, 563]);
+    bankScreen.clickButton(players[currentPlayer].integers[P_PRESET]);
   end;
-  if not bankScreen.isOpen(1000) then
 end;
 
-function countProtoPlanks(x: integer): integer;
-var
-  protoBox: TBox;
+procedure fixMisType(); // Shouldn't happen too often, but good to be safe
 begin
-  repeat
-    tabBackpack.isItemInSlot(x);
-    x := x - 1;
-  until tabBackpack.isItemInSlot(x);
-  protoBox := tabBackpack.getSlotBox(x);
-  getItemAmount(protoBox);
+  if chatOne.colorExists(14783855, 2) then // The lightish blue text (if not customized?)
+    begin
+      repeat
+        typeByteWait(VK_ESCAPE, randomRange(50, 75)); // Failsafe for mistypes during makePlanks
+      until chatOne.colorExists(9408398, 2); // The gray '[Press enter to talk]' text
+    end;
 end;
 
 procedure proggy();
-var
-  loadsString: string;
 begin
-  if proggyTime.getTime() < 20000 then
-    exit;
   clearDebug();
-
-  planksMade := planksMade + tabBackpack.countDTM(plankDTM);
-  protoMade := protoMade + ((28 - (planksMade)) * 2);  // <--- if works, renders countProtoPlanks unnecessary
-  //protoMade := protoMade + countProtoPlanks(28);
-  profitMade := ((planksMade * getGEPrice('Mahogany_plank')) - (logCount * getGEPrice('Mahogany_log'))) - (1350 * logCount);
-  if players[currentPlayer].integers[P_LOADS_TO_DO] < 1 then
-    loadsString := (' (' + groupDigits(perHour(loadsDone * 25, scriptTime.getTime()), ',') + ')')
-  else
-    loadsString := (' (' + groupDigits(players[currentPlayer].integers[P_LOADS_TO_DO], ',') + ')');
+  profitMade := (planksMade * plankPrice) - ((logPrice + 1350) * logTotal);
 
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');  // Debug Proggy
-  writeLn(padR('|          ' + SCRIPT + toStr(VERSION), 40) + '|');
+  writeLn(padR('|        ' + SCRIPT + toStr(VERSION), 40) + '|');
   writeLn('|=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=|');
   writeLn(padR('| Time Running: ' + (msToTime(scriptTime.getTime(), TIME_ABBREV)), 40) + '|');
-  writeLn(padR('| Loads Done  : ' + toStr(loadsDone) + loadsString + ' loads', 40) + '|');
-  writeLn(padR('| Proto Made  : ' + toStr(loadsDone) + loadsString + ' planks', 40) + '|');
-  writeLn(padR('| Profit Made : ' + groupDigits(profitMade, ',') + ' (' + groupDigits(perHour(profitMade, scriptTime.getTime()), ',') + ' hr)', 40) + '|');
+  writeLn(padR('| Protean Made: ' + toStr(protoMade) + ' planks (' + groupDigits(perHour(protoMade, scriptTime.getTime()), ',') + ' ph)', 40) + '|');
+  writeLn(padR('| Profit/Cost : ' + groupDigits(profitMade, ',') + ' (' + groupDigits(perHour(profitMade, scriptTime.getTime()), ',') + ' hr)', 40) + '|');
   writeLn('|_______________________________________|');
 
-  if players[currentPlayer].booleans[0] then // Smart Proggy
+  if players[currentPlayer].booleans[1] then // Smart Proggy
   begin
     smartImage.drawBitmap(paintBitmap, (point(4, 425)));
     smartImage.drawText((msToTime(scriptTime.getTime(), TIME_ABBREV)), Point(413, 441), UpCharsEx, false, clWhite); // Draw time running
-    smartImage.drawText(groupDigits(protoMade, ',') + ' Made' + ' (' + groupDigits(protoMade, ',') + ' loads)', Point(413, 480), UpCharsEx, false, 1268443); // Draw how many loads completed
-    smartImage.drawText(groupDigits(profitTotal, ',') + ' (' + (groupDigits(perHour(profitTotal, scriptTime.getTime()), ',')) + ' hr)', Point(413, 519), UpCharsEx, false, clYellow);
+    smartImage.drawText(groupDigits(protoMade, ',') + ' planks' + ' (' + groupDigits(perHour(protoMade, scriptTime.getTime()), ',') + ' ph)', Point(413, 480), UpCharsEx, false, 1268443); // Draw how many loads completed
+    smartImage.drawText(groupDigits(profitMade, ',') + ' (' + groupDigits(perHour(profitMade, scriptTime.getTime()), ',') + ' hr)', Point(413, 519), UpCharsEx, false, clYellow);
+    smartImage.drawText('Version: ' + toStr(VERSION), Point(255, 555), UpCharsEx, false, clGray);
   end
-  proggyTime.start();
+end;
+
+procedure freeStuff();
+begin
+  freeDTM(logDTM);
+  freeBitmaps([PaintBitmap, MillBitmap, PlankBitmap]);
 end;
 
 procedure setup();
@@ -325,57 +344,77 @@ begin
   clearDebug();
   smartEnableDrawing := true;
   checkForUpdates();
-  checkForImages('Scripts\lamaProtoProggy.png', 'https://i.imgur.com/s8Y2R2q.png', 'SMART Proggy');
+  checkForImages('Scripts\LamaPlankerPics\lamaMillBank.png', 'https://i.imgur.com/povwhzh.png', 'Mill Bitmap');
+  checkForImages('Scripts\LamaPlankerPics\lamaProtoProggy.png', 'https://i.imgur.com/s8Y2R2q.png', 'SMART Proggy Image');
+  checkForImages('Scripts\LamaPlankerPics\lamaPlankInv.png', 'https://i.imgur.com/abs0cKN.png', 'Plank Bitmap');
   initPlayerForm();
   runPlayerForm();
   if (not playerForm.isScriptReady) then
     terminatescript;
   declarePlayers();
-  if (players[currentPlayer].booleans[1]) then
+  if (players[currentPlayer].booleans[2]) then
     smartShowConsole := true
   else
     smartShowConsole := false;
   setupSRL();
-  if not players[currentPlayer].booleans[2] then
+  if not players[currentPlayer].booleans[3] then
     disableSRLDebug:=true
   else
     disableSRLDebug:=false;
-  logPrice := getGEPrice('Mahogany_log');
+  logPrice := getGEPrice('Mahogany_logs');
   plankPrice := getGEPrice('Mahogany_plank');
-  paintBitmap := loadBitmap(appPath + 'Scripts\lamaProtoProggy.png');
+  PaintBitmap := loadBitmap(appPath + 'Scripts\LamaPlankerPics\lamaProtoProggy.png');
+  MillBitmap := loadBitmap(appPath + 'Scripts\LamaPlankerPics\lamaMillBank.png');
+  PlankBitmap := loadBitmap(appPath + 'Scripts\LamaPlankerPics\lamaPlankInv.png');
+  logDTM :=  DTMFromString('mrAAAAHic42BgYLjOBMEPgfgZlAbxTwHxSSAOYWRg8IXiMCCOA+JEIE6A8lf3xwNNYcKJuRjwA0YCGAYAHMELUw==');
   chatOne := [107, 577, 173, 595];
+  addOnTerminate('freeStuff');
+  protoMade := 0;
+  planksMade := 0;
+  profitMade := 0;
   clearDebug();
 end;
 
 procedure mainLoop();
 begin
-  if not isLoggedIn() then
-    exit;
+  if not isLoggedIn then
+  begin
+    if not players[currentPlayer].login() then
+      terminateScript;
+    writeln('Just logged in... waiting a moment');
+    wait(RandomRange(2000, 3750));
+  end;
   minimap.clickCompass;
   mainScreen.setAngle(MS_ANGLE_HIGH);
-  repeat
-    if chatOne.colorExists(14783855, 2) then // The lightish blue text (if not customized?)
-      begin
-        repeat
-        typeByteWait(VK_ESCAPE, randomRange(50, 75)); // Failsafe for mistypes during makePlanks
-        until chatOne.colorExists(9408398, 2); // The gray '[Press enter to talk]' text
-      end;
+  mainscreen.setZoom(false);
+  findNormalRandoms();
 
+  scriptTime.start();
+  repeat
+    fixMisType();
+    if not noMill() and tabBackpack.countDTM(logDTM) >= 1  then
+      makePlanks();
+    if (chatbox.findTextOnLines(['afford to', 'make that many', 'can''t afford', 'Item could not', 'not be found', 'found: Mahogany logs'], [0..2])) or (noMill() and (not players[currentPlayer].booleans[0])) then
+      break;
+    proggy();
     doBanking();
-    if not noMill() then
-      makePlanks;
-  if (tabBackpack.isEmpty) then
-  begin
-    clearDebug();
-    writeLn('Failed to withdraw anything.');
-    terminateScript;
-  end;
-  until scriptTime.getTime() >= playerForm.players[currentPlayer].integers[0];
+  until (scriptTime.getTime() >= (players[currentPlayer].integers[0] * 60000));
+
+  proggy();
+
+  if scriptTime.getTime() >= (players[currentPlayer].integers[0] * 60000) then
+    writeLn('Time ran out ...')
+  else if (noMill() and (not players[currentPlayer].booleans[0])) then
+    writeLn('There is no mill, and you wish not to place one ...')
+  else
+    writeLn('You ran out of logs or money...');
+
+  writeLn('Exiting to lobby ...');
+  players[currentPlayer].exitToLobby();
+  writeLn('Completed task ...');
 end;
 
 begin
   setup();
-  repeat
-    mainLoop();
-  until false;
+  mainLoop();
 end.
